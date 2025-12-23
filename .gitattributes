@@ -1,0 +1,4 @@
+*.xml linguist-language=XML
+*.yml linguist-language=YAML
+*.yaml linguist-language=YAML
+*.json linguist-language=JSON
