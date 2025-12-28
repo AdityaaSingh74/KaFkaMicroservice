@@ -1,64 +1,123 @@
 package com.utkarshhh.controller;
 
+import com.utkarshhh.dto.UserDTO;
 import com.utkarshhh.modal.User;
 import com.utkarshhh.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import javax.swing.text.html.Option;
 import java.util.List;
-import java.util.Optional;
-
+import java.util.stream.Collectors;
 
 @RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
 public class UserController {
-    @Autowired
-    private UserRepository userRepository;
 
-    @PostMapping("/api/users")
-    public User createUser(@RequestBody User user){
-        return userRepository.save(user);
-    }
-    @GetMapping("/api/users")
-    public List<User> getUser(){
-        return userRepository.findAll();
-    }
+    private final UserRepository userRepository;
 
-    @GetMapping("/api/users/{id}")
-    public User getUserById(@PathVariable ObjectId id) throws Exception {
-        Optional<User> otp = userRepository.findById(id);
-        if(otp.isPresent()){
-            return otp.get();
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
+        try {
+            User user = userRepository.findById(new ObjectId(id))
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            System.out.println("=== DEBUG getUserById ===");
+            System.out.println("User from DB: " + user);
+            System.out.println("User.getId(): " + user.getId());
+
+            UserDTO userDTO = convertToDTO(user);
+
+            System.out.println("UserDTO after convert: " + userDTO);
+            System.out.println("UserDTO.getId(): " + userDTO.getId());
+            System.out.println("=== END DEBUG ===");
+
+            return ResponseEntity.ok(userDTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
-        else {
-            throw new Exception("User not found");
-        }
-    }
-
-    @PutMapping("/api/users/{id}")
-    public User updateUser(@RequestBody User user,@PathVariable ObjectId id) throws Exception {
-        Optional<User> otp = userRepository.findById(id);
-        if(otp.isEmpty())
-        {
-            throw new Exception("user not found with if: "+id);
-        }
-        User existingUser = otp.get();
-        existingUser.setEmail(user.getEmail());
-        existingUser.setFullName(user.getFullName());
-        existingUser.setRole(user.getRole());
-
-        return userRepository.save(existingUser);
     }
 
-    @DeleteMapping("/api/users/{id}")
-    public String deleteUserById(@PathVariable String id) throws Exception {
-        ObjectId objectId = new ObjectId(id); // throws IllegalArgumentException if invalid
-        Optional<User> otp = userRepository.findById(objectId);
-        if (otp.isEmpty()) {
-            throw new Exception("User not found with id: " + id);
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        List<UserDTO> userDTOs = users.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(userDTOs);
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
+        try {
+            User user = convertToEntity(userDTO);
+            User savedUser = userRepository.save(user);
+            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(savedUser));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-        userRepository.deleteById(objectId);
-        return "User deleted successfully";
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable String id, @RequestBody UserDTO userDTO) {
+        try {
+            User existingUser = userRepository.findById(new ObjectId(id))
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (userDTO.getFullName() != null) existingUser.setFullName(userDTO.getFullName());
+            if (userDTO.getEmail() != null) existingUser.setEmail(userDTO.getEmail());
+            if (userDTO.getPhone() != null) existingUser.setPhone(userDTO.getPhone());
+            if (userDTO.getRole() != null) existingUser.setRole(userDTO.getRole());
+
+            User updatedUser = userRepository.save(existingUser);
+            return ResponseEntity.ok(convertToDTO(updatedUser));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteUser(@PathVariable String id) {
+        try {
+            userRepository.deleteById(new ObjectId(id));
+            return ResponseEntity.ok("User deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    private UserDTO convertToDTO(User user) {
+
+        System.out.println("=== CONVERT TO DTO DEBUG ===");
+        System.out.println("User object: " + user);
+        System.out.println("User ID from entity: " + user.getId());
+        System.out.println("User ID class: " + (user.getId() != null ? user.getId().getClass() : "null"));
+
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+
+        System.out.println("DTO ID after setting: " + dto.getId());
+        System.out.println("=== END DEBUG ===");
+
+        dto.setFullName(user.getFullName());
+        dto.setEmail(user.getEmail());
+        dto.setPhone(user.getPhone());
+        dto.setRole(user.getRole());
+        return dto;
+    }
+
+    private User convertToEntity(UserDTO dto) {
+        User user = new User();
+        if (dto.getId() != null) {
+            user.setId(dto.getId());
+        }
+        user.setFullName(dto.getFullName());
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setRole(dto.getRole());
+        return user;
     }
 }

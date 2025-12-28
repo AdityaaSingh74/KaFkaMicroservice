@@ -1,4 +1,5 @@
 package com.utkarshhh.service.Impl;
+
 import java.util.Optional;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
@@ -9,6 +10,8 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.ApiResource;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.utkarshhh.client.BookingClient;
+import com.utkarshhh.client.UserClient;
 import com.utkarshhh.domain.PaymentOrderStatus;
 import com.utkarshhh.dto.BookingDTO;
 import com.utkarshhh.dto.UserDTO;
@@ -18,6 +21,7 @@ import com.utkarshhh.repository.PaymentOrderRepository;
 import com.utkarshhh.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,12 @@ import org.springframework.stereotype.Service;
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentOrderRepository paymentOrderRepository;
+
+    @Autowired
+    private BookingClient bookingClient;
+
+    @Autowired
+    private UserClient userClient;
 
     @Value("${stripe.api.key}")
     private String stripeSecretKey;
@@ -36,6 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentLinkResponse createOrder(UserDTO user, BookingDTO booking) throws Exception {
         Long amount = (long) booking.getTotalPrice();
+
 
         PaymentOrder order = new PaymentOrder();
         order.setAmount(amount);
@@ -145,7 +156,6 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
     }
-
 
     private String createStripePaymentLink(UserDTO user, Long amount, ObjectId orderId) throws Exception {
         try {

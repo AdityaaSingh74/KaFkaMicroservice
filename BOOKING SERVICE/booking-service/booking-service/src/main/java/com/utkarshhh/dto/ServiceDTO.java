@@ -1,12 +1,14 @@
 package com.utkarshhh.dto;
 
 import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.data.annotation.Id;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ServiceDTO {
-    @Id
     private ObjectId id;
     private String name;
     private String description;

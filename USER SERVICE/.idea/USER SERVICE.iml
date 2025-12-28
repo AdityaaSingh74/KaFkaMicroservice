@@ -11,5 +11,12 @@
     <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot:3.5.8" level="project" />
     <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-autoconfigure:3.4.1" level="project" />
     <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot:3.4.1" level="project" />
+    <orderEntry type="library" name="Maven: org.projectlombok:lombok:1.18.32" level="project" />
+    <orderEntry type="library" name="Maven: org.mongodb:bson:5.2.1" level="project" />
+    <orderEntry type="library" name="Maven: org.springframework.data:spring-data-commons:3.4.1" level="project" />
+    <orderEntry type="library" name="Maven: org.springframework.data:spring-data-mongodb:4.4.1" level="project" />
+    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.18.2" level="project" />
+    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.18.2" level="project" />
+    <orderEntry type="library" name="Maven: org.springframework:spring-web:6.2.1" level="project" />
   </component>
 </module>

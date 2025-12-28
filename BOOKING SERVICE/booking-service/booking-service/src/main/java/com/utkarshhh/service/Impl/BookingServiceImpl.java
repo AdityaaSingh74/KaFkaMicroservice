@@ -1,5 +1,8 @@
 package com.utkarshhh.service.Impl;
 
+import com.utkarshhh.client.SalonClient;
+import com.utkarshhh.client.ServiceClient;
+import com.utkarshhh.client.UserClient;
 import com.utkarshhh.domain.BookingStatus;
 import com.utkarshhh.domain.PaymentStatus;
 import com.utkarshhh.dto.SalonDTO;
@@ -11,6 +14,7 @@ import com.utkarshhh.repository.BookingRepository;
 import com.utkarshhh.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,34 +29,37 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
 
+    @Autowired
+    private UserClient userClient;
+
+    @Autowired
+    private SalonClient salonClient;
+
+    @Autowired
+    private ServiceClient serviceClient;
+
     @Override
     public Booking createBooking(Booking booking,
                                  UserDTO userDTO,
                                  SalonDTO salonDTO,
                                  Set<ServiceDTO> serviceDTOSet) throws Exception {
 
-
         int totalDuration = serviceDTOSet.stream()
                 .mapToInt(ServiceDTO::getDuration)
                 .sum();
 
-
         LocalDateTime bookingStartTime = booking.getStartTime();
         LocalDateTime bookingEndTime = bookingStartTime.plusMinutes(totalDuration);
 
-
         Boolean isSlotAvailable = isTimeSlotAvailable(salonDTO, bookingStartTime, bookingEndTime);
-
 
         int totalPrice = serviceDTOSet.stream()
                 .mapToInt(ServiceDTO::getPrice)
                 .sum();
 
-
         Set<ObjectId> idList = serviceDTOSet.stream()
                 .map(ServiceDTO::getId)
                 .collect(Collectors.toSet());
-
 
         booking.setSalonId(salonDTO.getId());
         booking.setServiceIds(idList);
@@ -75,28 +82,17 @@ public class BookingServiceImpl implements BookingService {
         LocalTime salonOpenTimeOnly = salonDTO.getOpenTime();
         LocalTime salonCloseTimeOnly = salonDTO.getCloseTime();
 
-
         LocalDateTime salonOpenTime = LocalDateTime.of(bookingStartTime.toLocalDate(), salonOpenTimeOnly);
         LocalDateTime salonCloseTime = LocalDateTime.of(bookingStartTime.toLocalDate(), salonCloseTimeOnly);
-
-        if (salonCloseTimeOnly.isBefore(salonOpenTimeOnly)) {
-            salonCloseTime = salonCloseTime.plusDays(1); // overnight shift
-        }
-
-
-
-
 
         if (salonCloseTimeOnly.isBefore(salonOpenTimeOnly)) {
             salonCloseTime = salonCloseTime.plusDays(1);
         }
 
-
         if (bookingStartTime.isBefore(salonOpenTime) || bookingEndTime.isAfter(salonCloseTime)) {
             throw new Exception("Booking time must be within salon's working hours: "
                     + salonOpenTimeOnly + " - " + salonCloseTimeOnly);
         }
-
 
         for (Booking existingBooking : existingBookings) {
             if (existingBooking.getStatus() == BookingStatus.CANCELLED) {

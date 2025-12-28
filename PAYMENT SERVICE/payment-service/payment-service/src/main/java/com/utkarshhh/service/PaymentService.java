@@ -8,8 +8,12 @@ import org.bson.types.ObjectId;
 
 public interface PaymentService {
     PaymentLinkResponse createOrder(UserDTO user, BookingDTO booking) throws Exception;
+
     PaymentOrder getPaymentOrderById(ObjectId id) throws Exception;
+
     PaymentOrder getPaymentOrderByPaymentId(String paymentId) throws Exception;
+
     Boolean proceedPayment(String paymentId, String paymentLinkId) throws Exception;
+
     void handleWebhook(String payload, String sigHeader) throws Exception;
 }

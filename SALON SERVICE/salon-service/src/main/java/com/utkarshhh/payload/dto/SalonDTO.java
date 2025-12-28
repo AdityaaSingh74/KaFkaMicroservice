@@ -1,32 +1,24 @@
 package com.utkarshhh.payload.dto;
 
-import com.mongodb.lang.NonNull;
 import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.data.annotation.Id;
-
 import java.time.LocalTime;
 import java.util.List;
+
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SalonDTO {
-
     private ObjectId id;
-
     private String name;
-
-    private List<String> images;
-
+    private List<String> images;      // ✅ This was missing!
     private String address;
-
-    private String phoneNumber;
-
+    private String phoneNumber;       // ✅ Was "phone", now "phoneNumber"
     private String email;
-
     private String city;
-
-    private Long ownerId;
-
+    private Long ownerId;             // ✅ This was missing!
     private LocalTime openTime;
-
     private LocalTime closeTime;
 }
