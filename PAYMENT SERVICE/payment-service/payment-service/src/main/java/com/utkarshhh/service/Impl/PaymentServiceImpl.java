@@ -14,18 +14,18 @@ import com.utkarshhh.client.BookingClient;
 import com.utkarshhh.client.UserClient;
 import com.utkarshhh.domain.PaymentOrderStatus;
 import com.utkarshhh.dto.BookingDTO;
+import com.utkarshhh.dto.PaymentNotificationDTO; // ✅ NEW
 import com.utkarshhh.dto.UserDTO;
 import com.utkarshhh.model.PaymentOrder;
 import com.utkarshhh.payload.response.PaymentLinkResponse;
 import com.utkarshhh.repository.PaymentOrderRepository;
+import com.utkarshhh.service.NotificationPublisher; // ✅ NEW
 import com.utkarshhh.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import com.utkarshhh.model.EmailMessage;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
     private UserClient userClient;
 
     @Autowired
-    private RabbitTemplate rabbitTemplate;
+    private NotificationPublisher notificationPublisher;
 
     @Value("${stripe.api.key}")
     private String stripeSecretKey;
@@ -51,7 +51,6 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentLinkResponse createOrder(UserDTO user, BookingDTO booking) throws Exception {
         Long amount = (long) booking.getTotalPrice();
-
 
         PaymentOrder order = new PaymentOrder();
         order.setAmount(amount);
@@ -130,7 +129,7 @@ public class PaymentServiceImpl implements PaymentService {
                     try {
                         stripeObject = ApiResource.GSON.fromJson(rawJson.get(), Session.class);
                     } catch (Exception e) {
-                        System.out.println("Failed to parse raw JSON into Session: " + e.getMessage());
+                        System.out.println("Failed to parse raw JSON: " + e.getMessage());
                     }
                 }
             }
@@ -144,34 +143,12 @@ public class PaymentServiceImpl implements PaymentService {
                     if (orderId != null && !orderId.isEmpty()) {
                         PaymentOrder paymentOrder = paymentOrderRepository.findById(new ObjectId(orderId)).orElse(null);
                         if (paymentOrder != null) {
+                            // Update payment status
                             paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
                             paymentOrderRepository.save(paymentOrder);
-                            System.out.println("Payment status updated to SUCCESS for order: " + orderId);
+                            System.out.println("Payment status updated to SUCCESS");
 
-                            // NEW CODE - Send email notification via RabbitMQ
-                            try {
-                                // Get user email (from booking if possible, or use a default)
-                                String userEmail = "customer@test.com"; // You can fetch from booking via Feign
-
-                                EmailMessage emailMessage = new EmailMessage();
-                                emailMessage.setTo(userEmail);
-                                emailMessage.setSubject("Payment Successful - Order #" + orderId);
-                                emailMessage.setBody(
-                                        "Dear Customer,\n\n" +
-                                                "Your payment has been successfully processed!\n\n" +
-                                                "Order ID: " + orderId + "\n" +
-                                                "Amount: $" + (paymentOrder.getAmount() / 100.0) + "\n\n" +
-                                                "Thank you for your booking!\n\n" +
-                                                "Best regards,\n" +
-                                                "Salon Booking Team"
-                                );
-                                emailMessage.setOrderId(orderId);
-
-                                rabbitTemplate.convertAndSend("email-queue", emailMessage);
-                                System.out.println("Email notification sent to queue for order: " + orderId);
-                            } catch (Exception e) {
-                                System.out.println("Failed to send email notification: " + e.getMessage());
-                            }
+                            sendPaymentSuccessNotification(paymentOrder, session.getPaymentIntent());
 
                         } else {
                             System.out.println("Payment order not found: " + orderId);
@@ -185,6 +162,36 @@ public class PaymentServiceImpl implements PaymentService {
             } else {
                 System.out.println("Stripe object is not a Session");
             }
+        }
+    }
+
+    private void sendPaymentSuccessNotification(PaymentOrder paymentOrder, String paymentIntentId) {
+        try {
+            System.out.println("Preparing payment notification...");
+
+            BookingDTO booking = bookingClient.getBooking(paymentOrder.getBookingId().toString());
+            System.out.println("   Booking fetched: " + booking.getId());
+
+            UserDTO user = userClient.getUser(booking.getCustomerId());
+            System.out.println("   User fetched: " + user.getFullName());
+
+            PaymentNotificationDTO notification = new PaymentNotificationDTO(
+                    paymentOrder.getId().toString(),
+                    paymentOrder.getBookingId().toString(),
+                    user.getEmail(),
+                    user.getFullName(),
+                    paymentOrder.getAmount().intValue(),
+                    "SUCCESS",
+                    paymentIntentId != null ? paymentIntentId : "N/A"
+            );
+
+            notificationPublisher.sendPaymentNotification(notification);
+
+            System.out.println("Payment notification sent to queue!");
+
+        } catch (Exception e) {
+            System.err.println("Failed to send payment notification: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

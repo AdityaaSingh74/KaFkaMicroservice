@@ -10,7 +10,7 @@ import org.springframework.data.annotation.Id;
 public class UserDTO {
     @Id
     @JsonSerialize(using = ToStringSerializer.class)
-    private ObjectId id;
+    private String id;
     private String fullName;
     private String email;
 }

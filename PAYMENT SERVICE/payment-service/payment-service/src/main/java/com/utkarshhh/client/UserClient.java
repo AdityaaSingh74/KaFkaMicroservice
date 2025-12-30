@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @FeignClient(name = "USER-SERVICE")
 public interface UserClient {
 
-    @GetMapping("/api/users/{id}")
-    UserDTO getUser(@PathVariable("id") String id);
+    // ✅ ORIGINAL ENDPOINT - Works with UUID now!
+    @GetMapping("/api/users/{userId}")
+    UserDTO getUser(@PathVariable("userId") String userId);
 }

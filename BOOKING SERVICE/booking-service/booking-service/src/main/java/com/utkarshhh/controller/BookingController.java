@@ -61,8 +61,13 @@ public class BookingController {
             @RequestHeader("User-Email") String userEmail) {
 
         try {
+            System.out.println("📝 Creating booking with:");
+            System.out.println("   User-Id: " + userId);
+            System.out.println("   User-Name: " + userName);
+            System.out.println("   User-Email: " + userEmail);
+
             UserDTO userDTO = new UserDTO();
-            userDTO.setId(new ObjectId(userId));
+            userDTO.setId(userId);  // Store UUID directly
             userDTO.setFullName(userName);
             userDTO.setEmail(userEmail);
 
@@ -80,9 +85,7 @@ public class BookingController {
 
             Booking createdBooking = bookingService.createBooking(booking, userDTO, salonDTO, serviceDTOSet);
 
-            // ✅ ADD THIS - Send notification after booking is created
             try {
-                // Get first service name (or combine all service names)
                 String serviceNames = serviceDTOSet.stream()
                         .map(ServiceDTO::getName)
                         .collect(Collectors.joining(", "));
@@ -98,13 +101,14 @@ public class BookingController {
                 );
 
                 notificationPublisher.sendBookingNotification(notification);
+                System.out.println("✅ Notification sent!");
             } catch (Exception e) {
-                System.err.println("⚠️ Failed to send notification: " + e.getMessage());
-                // Don't fail the booking if notification fails
+                System.err.println("⚠️ Notification failed: " + e.getMessage());
             }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(createdBooking);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
@@ -212,7 +216,6 @@ public class BookingController {
         }
     }
 
-    //feign client test endpoints(just for checking purpose)
     @GetMapping("/test-feign/user/{userId}")
     public ResponseEntity<?> testUserFeign(@PathVariable String userId) {
         try {

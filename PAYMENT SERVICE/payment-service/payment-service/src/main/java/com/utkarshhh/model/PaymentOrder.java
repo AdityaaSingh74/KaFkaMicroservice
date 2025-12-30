@@ -14,7 +14,7 @@ public class PaymentOrder {
     private Long amount;
     private PaymentOrderStatus status = PaymentOrderStatus.PENDING;
     private String paymentLinkId;
-    private ObjectId userId;
+    private String userId;
     private ObjectId salonId;
     private ObjectId bookingId;
 }

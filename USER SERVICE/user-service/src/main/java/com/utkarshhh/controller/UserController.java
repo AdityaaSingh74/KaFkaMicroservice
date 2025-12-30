@@ -4,7 +4,6 @@ import com.utkarshhh.dto.UserDTO;
 import com.utkarshhh.modal.User;
 import com.utkarshhh.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,19 +20,11 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
         try {
-            User user = userRepository.findById(new ObjectId(id))
+            // ✅ Directly use String id (Keycloak UUID)
+            User user = userRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            System.out.println("=== DEBUG getUserById ===");
-            System.out.println("User from DB: " + user);
-            System.out.println("User.getId(): " + user.getId());
-
             UserDTO userDTO = convertToDTO(user);
-
-            System.out.println("UserDTO after convert: " + userDTO);
-            System.out.println("UserDTO.getId(): " + userDTO.getId());
-            System.out.println("=== END DEBUG ===");
-
             return ResponseEntity.ok(userDTO);
         } catch (Exception e) {
             e.printStackTrace();
@@ -64,7 +55,8 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserDTO> updateUser(@PathVariable String id, @RequestBody UserDTO userDTO) {
         try {
-            User existingUser = userRepository.findById(new ObjectId(id))
+            // ✅ Directly use String id
+            User existingUser = userRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             if (userDTO.getFullName() != null) existingUser.setFullName(userDTO.getFullName());
@@ -82,7 +74,8 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable String id) {
         try {
-            userRepository.deleteById(new ObjectId(id));
+            // ✅ Directly use String id
+            userRepository.deleteById(id);
             return ResponseEntity.ok("User deleted successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -90,18 +83,8 @@ public class UserController {
     }
 
     private UserDTO convertToDTO(User user) {
-
-        System.out.println("=== CONVERT TO DTO DEBUG ===");
-        System.out.println("User object: " + user);
-        System.out.println("User ID from entity: " + user.getId());
-        System.out.println("User ID class: " + (user.getId() != null ? user.getId().getClass() : "null"));
-
         UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
-
-        System.out.println("DTO ID after setting: " + dto.getId());
-        System.out.println("=== END DEBUG ===");
-
+        dto.setId(user.getId()); // ✅ id is String now
         dto.setFullName(user.getFullName());
         dto.setEmail(user.getEmail());
         dto.setPhone(user.getPhone());
@@ -112,7 +95,7 @@ public class UserController {
     private User convertToEntity(UserDTO dto) {
         User user = new User();
         if (dto.getId() != null) {
-            user.setId(dto.getId());
+            user.setId(dto.getId()); // ✅ id is String now
         }
         user.setFullName(dto.getFullName());
         user.setEmail(dto.getEmail());

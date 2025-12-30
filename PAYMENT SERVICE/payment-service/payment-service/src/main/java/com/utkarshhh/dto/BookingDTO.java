@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class BookingDTO {
     private ObjectId id;
-    private ObjectId customerId;
+    private String customerId;
     private ObjectId salonId;
     private List<ObjectId> serviceIds;
     private LocalDateTime startTime;

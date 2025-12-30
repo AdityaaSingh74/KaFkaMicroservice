@@ -15,7 +15,7 @@ public class Booking {
     @Id
     private ObjectId id;
     private ObjectId salonId;
-    private ObjectId customerId;
+    private String customerId;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Set<ObjectId> serviceIds;
