@@ -9,7 +9,9 @@ import com.utkarshhh.dto.BookingRequest;
 import com.utkarshhh.dto.SalonDTO;
 import com.utkarshhh.dto.ServiceDTO;
 import com.utkarshhh.dto.UserDTO;
+import com.utkarshhh.dto.BookingNotificationDTO;  // ✅ Add this import
 import com.utkarshhh.mapper.BookingMapper;
+import com.utkarshhh.service.NotificationPublisher;  // ✅ Add this import
 import com.utkarshhh.model.Booking;
 import com.utkarshhh.model.SalonReport;
 import com.utkarshhh.repository.BookingRepository;
@@ -48,6 +50,9 @@ public class BookingController {
     @Autowired
     private ServiceClient serviceClient;
 
+    @Autowired
+    private NotificationPublisher notificationPublisher;
+
     @PostMapping
     public ResponseEntity<?> createBooking(
             @RequestBody BookingRequest bookingRequest,
@@ -75,7 +80,30 @@ public class BookingController {
 
             Booking createdBooking = bookingService.createBooking(booking, userDTO, salonDTO, serviceDTOSet);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(BookingMapper.toDTO(createdBooking));
+            // ✅ ADD THIS - Send notification after booking is created
+            try {
+                // Get first service name (or combine all service names)
+                String serviceNames = serviceDTOSet.stream()
+                        .map(ServiceDTO::getName)
+                        .collect(Collectors.joining(", "));
+
+                BookingNotificationDTO notification = new BookingNotificationDTO(
+                        createdBooking.getId().toString(),
+                        userEmail,
+                        userName,
+                        salonDTO.getName(),
+                        serviceNames,
+                        createdBooking.getStartTime().toString(),
+                        createdBooking.getTotalPrice()
+                );
+
+                notificationPublisher.sendBookingNotification(notification);
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to send notification: " + e.getMessage());
+                // Don't fail the booking if notification fails
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdBooking);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }

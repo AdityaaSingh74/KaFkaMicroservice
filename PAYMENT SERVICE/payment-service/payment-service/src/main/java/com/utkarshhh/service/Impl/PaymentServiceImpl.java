@@ -24,6 +24,8 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.utkarshhh.model.EmailMessage;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +38,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Autowired
     private UserClient userClient;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     @Value("${stripe.api.key}")
     private String stripeSecretKey;
@@ -142,6 +147,32 @@ public class PaymentServiceImpl implements PaymentService {
                             paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
                             paymentOrderRepository.save(paymentOrder);
                             System.out.println("Payment status updated to SUCCESS for order: " + orderId);
+
+                            // NEW CODE - Send email notification via RabbitMQ
+                            try {
+                                // Get user email (from booking if possible, or use a default)
+                                String userEmail = "customer@test.com"; // You can fetch from booking via Feign
+
+                                EmailMessage emailMessage = new EmailMessage();
+                                emailMessage.setTo(userEmail);
+                                emailMessage.setSubject("Payment Successful - Order #" + orderId);
+                                emailMessage.setBody(
+                                        "Dear Customer,\n\n" +
+                                                "Your payment has been successfully processed!\n\n" +
+                                                "Order ID: " + orderId + "\n" +
+                                                "Amount: $" + (paymentOrder.getAmount() / 100.0) + "\n\n" +
+                                                "Thank you for your booking!\n\n" +
+                                                "Best regards,\n" +
+                                                "Salon Booking Team"
+                                );
+                                emailMessage.setOrderId(orderId);
+
+                                rabbitTemplate.convertAndSend("email-queue", emailMessage);
+                                System.out.println("Email notification sent to queue for order: " + orderId);
+                            } catch (Exception e) {
+                                System.out.println("Failed to send email notification: " + e.getMessage());
+                            }
+
                         } else {
                             System.out.println("Payment order not found: " + orderId);
                         }
