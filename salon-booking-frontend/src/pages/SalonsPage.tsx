@@ -34,7 +34,7 @@ export default function SalonsPage() {
       setLoading(true)
       setError(null)
       // Using dummy service for now - replace with apiClient.getSalons() when backend is ready
-      const data = await DummySalonService.getSalons(1, 10)
+      const data = await apiClient.getSalons(1, 10)
       setSalons(data.salons)
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Failed to fetch salons'

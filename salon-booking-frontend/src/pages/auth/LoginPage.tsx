@@ -28,7 +28,7 @@ export default function LoginPage() {
 
     try {
       setLoading(true)
-      const { user, token } = await DummyAuthService.login(formData.email, formData.password)
+      const { user, token } = await apiClient.login({ email, password })
       login(user, token)
       
       // Navigate based on role

@@ -49,8 +49,7 @@ class APIClient {
       headers: {
         'Content-Type': 'application/json',
         // ✅ CORS headers for frontend requests
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Origin': '*',
+        
       },
       withCredentials: false, // Set to true if backend sends credentials
     })
@@ -94,31 +93,31 @@ class APIClient {
     phone: string
   }) {
     const response = await this.client.post('/users/register', data)
-    if (response.data.token) {
-      localStorage.setItem('authToken', response.data.token)
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
+    if (response.data.accessToken) {
+    localStorage.setItem('authToken', response.data.accessToken)
+    localStorage.setItem('token', response.data.accessToken)
+    localStorage.setItem('user', JSON.stringify(response.data.user))
+  }
     return response.data
   }
 
   async loginUser(email: string, password: string) {
     const response = await this.client.post('/users/login', { email, password })
-    if (response.data.token) {
-      localStorage.setItem('authToken', response.data.token)
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
+    if (response.data.accessToken) {
+    localStorage.setItem('authToken', response.data.accessToken)
+    localStorage.setItem('token', response.data.accessToken)
+    localStorage.setItem('user', JSON.stringify(response.data.user))
+  }
     return response.data
   }
 
   async login(data: { email: string; password: string }) {
     const response = await this.client.post('/users/login', data)
-    if (response.data.token) {
-      localStorage.setItem('authToken', response.data.token)
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
+    if (response.data.accessToken) {
+    localStorage.setItem('authToken', response.data.accessToken)
+    localStorage.setItem('token', response.data.accessToken)
+    localStorage.setItem('user', JSON.stringify(response.data.user))
+  }
     return response.data
   }
 
