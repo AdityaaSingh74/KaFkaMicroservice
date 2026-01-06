@@ -5,36 +5,32 @@ import axios, { AxiosInstance } from 'axios'
  * API CLIENT - Microservices Gateway Integration
  * ============================================
  * 
- * Routes ALL requests through Spring Cloud Gateway (Port 8862)
- * All microservices are discovered and routed via Eureka
+ * Routes through Spring Cloud Gateway (Port 8862)
+ * Services discovered via Eureka
  * 
- * GATEWAY: http://localhost:8862/api
+ * GATEWAY: http://localhost:8862
  * EUREKA: http://localhost:8761
  * 
+ * ROUTING PATTERN: /{EUREKA-SERVICE-NAME}/api/{endpoint}
+ * 
  * MICROSERVICES (Registered with Eureka):
- * - USER-SERVICE: :8001
- * - SALON-SERVICE: :8002
- * - SERVICE-OFFERING: :8003
- * - CATEGORY-SERVICE: :8004
- * - BOOKING-SERVICE: :8005
- * - PAYMENT-SERVICE: :8006
- * - NOTIFICATION-SERVICE: :8007
+ * - USER-SERVICE: /users/api/...
+ * - SALON-SERVICE: /salons/api/...
+ * - SERVICE-OFFERING: /services/api/...
+ * - CATEGORY-SERVICE: /categories/api/...
+ * - BOOKING-SERVICE: /bookings/api/...
+ * - PAYMENT-SERVICE: /payments/api/...
+ * - NOTIFICATION-SERVICE: /notifications/api/...
  */
 
-// ✅ FIXED: Use import.meta.env for Vite OR handle both Create React App and Vite
 const getGatewayUrl = () => {
-  // For Vite projects
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GATEWAY_URL) {
     return import.meta.env.VITE_GATEWAY_URL
   }
-  
-  // For Create React App projects (REACT_APP_ prefix)
   if (typeof window !== 'undefined' && (window as any).__ENV__?.REACT_APP_GATEWAY_URL) {
     return (window as any).__ENV__.REACT_APP_GATEWAY_URL
   }
-  
-  // Fallback to default
-  return 'http://localhost:8862/api'
+  return 'http://localhost:8862'
 }
 
 const GATEWAY_URL = getGatewayUrl()
@@ -48,16 +44,15 @@ class APIClient {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
-        // ✅ CORS headers for frontend requests
-        
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': '*',
       },
-      withCredentials: false, // Set to true if backend sends credentials
+      withCredentials: false,
     })
 
     // REQUEST INTERCEPTOR: Attach JWT token to all requests
     this.client.interceptors.request.use(
       (config) => {
-        // Try both 'authToken' and 'token' for compatibility
         const token = localStorage.getItem('authToken') || localStorage.getItem('token')
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
@@ -72,7 +67,6 @@ class APIClient {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Token expired - clear localStorage and redirect to login
           localStorage.removeItem('authToken')
           localStorage.removeItem('token')
           localStorage.removeItem('user')
@@ -83,7 +77,7 @@ class APIClient {
     )
   }
 
-  // ==================== USER SERVICE (Port 8001) ====================
+  // ==================== USER SERVICE (Eureka: USER-SERVICE) ====================
   
   async registerUser(data: {
     name: string
@@ -92,32 +86,35 @@ class APIClient {
     role: 'CUSTOMER' | 'SALON_OWNER' | 'ADMIN'
     phone: string
   }) {
-    const response = await this.client.post('/users/register', data)
-    if (response.data.accessToken) {
-    localStorage.setItem('authToken', response.data.accessToken)
-    localStorage.setItem('token', response.data.accessToken)
-    localStorage.setItem('user', JSON.stringify(response.data.user))
-  }
+    const response = await this.client.post('/users/api/users/register', data)
+    if (response.data.token || response.data.accessToken) {
+      const token = response.data.token || response.data.accessToken
+      localStorage.setItem('authToken', token)
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
     return response.data
   }
 
   async loginUser(email: string, password: string) {
-    const response = await this.client.post('/users/login', { email, password })
-    if (response.data.accessToken) {
-    localStorage.setItem('authToken', response.data.accessToken)
-    localStorage.setItem('token', response.data.accessToken)
-    localStorage.setItem('user', JSON.stringify(response.data.user))
-  }
+    const response = await this.client.post('/users/api/users/login', { email, password })
+    if (response.data.token || response.data.accessToken) {
+      const token = response.data.token || response.data.accessToken
+      localStorage.setItem('authToken', token)
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
     return response.data
   }
 
   async login(data: { email: string; password: string }) {
-    const response = await this.client.post('/users/login', data)
-    if (response.data.accessToken) {
-    localStorage.setItem('authToken', response.data.accessToken)
-    localStorage.setItem('token', response.data.accessToken)
-    localStorage.setItem('user', JSON.stringify(response.data.user))
-  }
+    const response = await this.client.post('/users/api/users/login', data)
+    if (response.data.token || response.data.accessToken) {
+      const token = response.data.token || response.data.accessToken
+      localStorage.setItem('authToken', token)
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
     return response.data
   }
 
@@ -129,16 +126,16 @@ class APIClient {
   }
 
   async getUserProfile(userId: string) {
-    return (await this.client.get(`/users/${userId}`)).data
+    return (await this.client.get(`/users/api/users/${userId}`)).data
   }
 
   async updateUserProfile(userId: string, data: any) {
-    const response = await this.client.put(`/users/${userId}`, data)
+    const response = await this.client.put(`/users/api/users/${userId}`, data)
     localStorage.setItem('user', JSON.stringify(response.data))
     return response.data
   }
 
-  // ==================== SALON SERVICE (Port 8002) ====================
+  // ==================== SALON SERVICE (Eureka: SALON-SERVICE) ====================
 
   async getSalons(page = 1, limit = 10, search?: string) {
     const params = new URLSearchParams({
@@ -146,11 +143,11 @@ class APIClient {
       limit: limit.toString(),
       ...(search && { search }),
     })
-    return (await this.client.get(`/salons?${params}`)).data
+    return (await this.client.get(`/salons/api/salons?${params}`)).data
   }
 
   async getSalonById(id: string) {
-    return (await this.client.get(`/salons/${id}`)).data
+    return (await this.client.get(`/salons/api/salons/${id}`)).data
   }
 
   async searchSalons(query: string, city?: string) {
@@ -158,74 +155,74 @@ class APIClient {
       search: query,
       ...(city && { city }),
     })
-    return (await this.client.get(`/salons/search?${params}`)).data
+    return (await this.client.get(`/salons/api/salons/search?${params}`)).data
   }
 
   async createSalon(data: any) {
-    return (await this.client.post('/salons', data)).data
+    return (await this.client.post('/salons/api/salons', data)).data
   }
 
   async updateSalon(id: string, data: any) {
-    return (await this.client.put(`/salons/${id}`, data)).data
+    return (await this.client.put(`/salons/api/salons/${id}`, data)).data
   }
 
   async deleteSalon(id: string) {
-    return (await this.client.delete(`/salons/${id}`)).data
+    return (await this.client.delete(`/salons/api/salons/${id}`)).data
   }
 
-  // ==================== SERVICE OFFERING (Port 8003) ====================
+  // ==================== SERVICE OFFERING (Eureka: SERVICE-OFFERING) ====================
 
   async getServicesBySalonId(salonId: string, page = 1, limit = 20) {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/salons/${salonId}/services?${params}`)).data
+    return (await this.client.get(`/services/api/salons/${salonId}/services?${params}`)).data
   }
 
   async getServiceById(id: string) {
-    return (await this.client.get(`/services/${id}`)).data
+    return (await this.client.get(`/services/api/services/${id}`)).data
   }
 
   async getServicesByCategory(categoryId: string) {
-    return (await this.client.get(`/services/category/${categoryId}`)).data
+    return (await this.client.get(`/services/api/services/category/${categoryId}`)).data
   }
 
   async createService(data: any) {
-    return (await this.client.post('/services', data)).data
+    return (await this.client.post('/services/api/services', data)).data
   }
 
   async updateService(id: string, data: any) {
-    return (await this.client.put(`/services/${id}`, data)).data
+    return (await this.client.put(`/services/api/services/${id}`, data)).data
   }
 
   async deleteService(id: string) {
-    return (await this.client.delete(`/services/${id}`)).data
+    return (await this.client.delete(`/services/api/services/${id}`)).data
   }
 
-  // ==================== CATEGORY SERVICE (Port 8004) ====================
+  // ==================== CATEGORY SERVICE (Eureka: CATEGORY-SERVICE) ====================
 
   async getCategories() {
-    return (await this.client.get('/categories')).data
+    return (await this.client.get('/categories/api/categories')).data
   }
 
   async getCategoryById(id: string) {
-    return (await this.client.get(`/categories/${id}`)).data
+    return (await this.client.get(`/categories/api/categories/${id}`)).data
   }
 
   async createCategory(data: any) {
-    return (await this.client.post('/categories', data)).data
+    return (await this.client.post('/categories/api/categories', data)).data
   }
 
   async updateCategory(id: string, data: any) {
-    return (await this.client.put(`/categories/${id}`, data)).data
+    return (await this.client.put(`/categories/api/categories/${id}`, data)).data
   }
 
   async deleteCategory(id: string) {
-    return (await this.client.delete(`/categories/${id}`)).data
+    return (await this.client.delete(`/categories/api/categories/${id}`)).data
   }
 
-  // ==================== BOOKING SERVICE (Port 8005) ====================
+  // ==================== BOOKING SERVICE (Eureka: BOOKING-SERVICE) ====================
 
   async createBooking(data: {
     userId: string
@@ -235,11 +232,11 @@ class APIClient {
     bookingTime: string
     notes?: string
   }) {
-    return (await this.client.post('/bookings', data)).data
+    return (await this.client.post('/bookings/api/bookings', data)).data
   }
 
   async getBookingById(id: string) {
-    return (await this.client.get(`/bookings/${id}`)).data
+    return (await this.client.get(`/bookings/api/bookings/${id}`)).data
   }
 
   async getUserBookings(userId: string, page = 1, limit = 10) {
@@ -247,7 +244,7 @@ class APIClient {
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/users/${userId}/bookings?${params}`)).data
+    return (await this.client.get(`/bookings/api/users/${userId}/bookings?${params}`)).data
   }
 
   async getSalonBookings(salonId: string, page = 1, limit = 10) {
@@ -255,33 +252,33 @@ class APIClient {
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/salons/${salonId}/bookings?${params}`)).data
+    return (await this.client.get(`/bookings/api/salons/${salonId}/bookings?${params}`)).data
   }
 
   async updateBooking(id: string, data: any) {
-    return (await this.client.put(`/bookings/${id}`, data)).data
+    return (await this.client.put(`/bookings/api/bookings/${id}`, data)).data
   }
 
   async cancelBooking(id: string) {
-    return (await this.client.post(`/bookings/${id}/cancel`, {})).data
+    return (await this.client.post(`/bookings/api/bookings/${id}/cancel`, {})).data
   }
 
   async getAvailability(salonId: string, date: string) {
-    return (await this.client.get(`/salons/${salonId}/availability?date=${date}`)).data
+    return (await this.client.get(`/bookings/api/salons/${salonId}/availability?date=${date}`)).data
   }
 
-  // ==================== PAYMENT SERVICE (Port 8006) ====================
+  // ==================== PAYMENT SERVICE (Eureka: PAYMENT-SERVICE) ====================
 
   async createPayment(data: {
     bookingId: string
     amount: number
     paymentMethod: string
   }) {
-    return (await this.client.post('/payments', data)).data
+    return (await this.client.post('/payments/api/payments', data)).data
   }
 
   async getPaymentById(id: string) {
-    return (await this.client.get(`/payments/${id}`)).data
+    return (await this.client.get(`/payments/api/payments/${id}`)).data
   }
 
   async processPayment(
@@ -293,11 +290,11 @@ class APIClient {
       upiId?: string
     }
   ) {
-    return (await this.client.post(`/payments/${id}/process`, details)).data
+    return (await this.client.post(`/payments/api/payments/${id}/process`, details)).data
   }
 
   async confirmPayment(id: string) {
-    return (await this.client.post(`/payments/${id}/confirm`, {})).data
+    return (await this.client.post(`/payments/api/payments/${id}/confirm`, {})).data
   }
 
   async getPaymentHistory(userId: string, page = 1, limit = 10) {
@@ -305,29 +302,29 @@ class APIClient {
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/users/${userId}/payments?${params}`)).data
+    return (await this.client.get(`/payments/api/users/${userId}/payments?${params}`)).data
   }
 
   async refundPayment(id: string, reason: string) {
-    return (await this.client.post(`/payments/${id}/refund`, { reason })).data
+    return (await this.client.post(`/payments/api/payments/${id}/refund`, { reason })).data
   }
 
-  // ==================== NOTIFICATION SERVICE (Port 8007) ====================
+  // ==================== NOTIFICATION SERVICE (Eureka: NOTIFICATION-SERVICE) ====================
 
   async getNotifications(userId: string, page = 1, limit = 20) {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/users/${userId}/notifications?${params}`)).data
+    return (await this.client.get(`/notifications/api/users/${userId}/notifications?${params}`)).data
   }
 
   async markNotificationAsRead(id: string) {
-    return (await this.client.put(`/notifications/${id}/read`, {})).data
+    return (await this.client.put(`/notifications/api/notifications/${id}/read`, {})).data
   }
 
   async sendEmailNotification(email: string, subject: string, message: string) {
-    return (await this.client.post('/notifications/email', { email, subject, message })).data
+    return (await this.client.post('/notifications/api/notifications/email', { email, subject, message })).data
   }
 }
 
