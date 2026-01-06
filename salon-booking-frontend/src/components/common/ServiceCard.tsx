@@ -7,21 +7,45 @@ interface ServiceCardProps {
 
 export default function ServiceCard({ service, onBook }: ServiceCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h4 className="font-semibold text-lg">{service.name}</h4>
-          <p className="text-sm text-gray-600">{service.category}</p>
+    <div className="bg-white rounded-lg border border-slate-200 hover:border-slate-300 p-5 md:p-6 transition-all duration-200 hover:shadow-md">
+      {/* Header */}
+      <div className="flex justify-between items-start gap-3 mb-4">
+        <div className="flex-1">
+          <h4 className="font-semibold text-lg text-slate-900 mb-1">{service.name}</h4>
+          <p className="text-sm text-slate-600 font-medium">{service.category}</p>
         </div>
-        <span className="text-lg font-bold text-green-600">₹{service.price}</span>
+        <div className="text-right flex-shrink-0">
+          <p className="text-2xl font-bold text-slate-900">₹{service.price}</p>
+        </div>
       </div>
-      <p className="text-gray-700 text-sm mb-3">{service.description || 'Premium salon service'}</p>
-      <div className="flex justify-between items-center">
-        <span className="text-xs text-gray-500">{service.duration} mins</span>
+
+      {/* Description */}
+      <p className="text-slate-700 text-sm mb-4 leading-relaxed line-clamp-2">
+        {service.description || 'Premium salon service'}
+      </p>
+
+      {/* Footer */}
+      <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>{service.duration} mins</span>
+        </div>
         {onBook && (
           <button
             onClick={() => onBook(service)}
-            className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 transition"
+            className="px-4 py-2 bg-slate-700 text-white rounded-md font-medium text-sm hover:bg-slate-800 transition-colors duration-200"
           >
             Book Now
           </button>
