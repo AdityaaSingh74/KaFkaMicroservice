@@ -7,22 +7,44 @@ interface SalonCardProps {
 
 export default function SalonCard({ salon }: SalonCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden">
-      <img
-        src={salon.image || 'https://via.placeholder.com/300x200?text=' + salon.name}
-        alt={salon.name}
-        className="w-full h-48 object-cover"
-      />
-      <div className="p-4">
-        <h3 className="text-lg font-semibold mb-2">{salon.name}</h3>
-        <p className="text-gray-600 text-sm mb-3">{salon.address}</p>
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-yellow-500">⭐ {salon.rating.toFixed(1)}</span>
-          <span className="text-gray-500 text-sm">{salon.city}</span>
+    <div className="bg-white rounded-lg border border-slate-200 hover:border-slate-300 overflow-hidden transition-all duration-200 hover:shadow-md flex flex-col h-full">
+      {/* Image Container */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-50 h-48">
+        <img
+          src={salon.image || 'https://images.unsplash.com/photo-1633621821756-e60dab7fc92f?w=400&h=250&fit=crop'}
+          alt={salon.name}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.src = 'https://images.unsplash.com/photo-1633621821756-e60dab7fc92f?w=400&h=250&fit=crop'
+          }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Name */}
+        <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">{salon.name}</h3>
+
+        {/* Address */}
+        <p className="text-sm text-slate-600 mb-4 line-clamp-2 flex-shrink-0">{salon.address}</p>
+
+        {/* Rating and City */}
+        <div className="flex justify-between items-center mb-5 mt-auto">
+          <div className="flex items-center gap-1">
+            <span className="text-yellow-500 text-lg">★</span>
+            <span className="font-semibold text-slate-900">{salon.rating.toFixed(1)}</span>
+            <span className="text-xs text-slate-500">(4.2k)</span>
+          </div>
+          <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
+            {salon.city}
+          </span>
         </div>
+
+        {/* CTA Button */}
         <Link
           to={`/salons/${salon.id}`}
-          className="w-full bg-blue-500 text-white py-2 rounded text-center hover:bg-blue-600 transition"
+          className="w-full bg-slate-700 text-white py-2.5 rounded-md text-center font-medium hover:bg-slate-800 transition-colors duration-200"
         >
           View Details
         </Link>
