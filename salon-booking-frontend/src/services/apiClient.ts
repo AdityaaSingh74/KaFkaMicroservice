@@ -1,21 +1,27 @@
 import axios, { AxiosInstance } from 'axios'
 
 /**
- * API CLIENT - Routes all requests through Spring Cloud Gateway
+ * ============================================
+ * API CLIENT - Microservices Gateway Integration
+ * ============================================
  * 
- * Gateway: http://localhost:8888/api
+ * Routes ALL requests through Spring Cloud Gateway (Port 8762)
+ * All microservices are discovered and routed via Eureka
  * 
- * Microservices:
- * - USER-SERVICE (8001) -> /api/users
- * - SALON-SERVICE (8002) -> /api/salons
- * - SERVICE-OFFERING (8003) -> /api/services
- * - CATEGORY-SERVICE (8004) -> /api/categories  
- * - BOOKING-SERVICE (8005) -> /api/bookings
- * - PAYMENT-SERVICE (8006) -> /api/payments
- * - NOTIFICATION-SERVICE (8007) -> /api/notifications
+ * GATEWAY: http://localhost:8762/api
+ * EUREKA: http://localhost:8761
+ * 
+ * MICROSERVICES (Registered with Eureka):
+ * - USER-SERVICE: :8001
+ * - SALON-SERVICE: :8002
+ * - SERVICE-OFFERING: :8003
+ * - CATEGORY-SERVICE: :8004
+ * - BOOKING-SERVICE: :8005
+ * - PAYMENT-SERVICE: :8006
+ * - NOTIFICATION-SERVICE: :8007
  */
 
-const GATEWAY_URL = process.env.REACT_APP_GATEWAY_URL || 'http://localhost:8888/api'
+const GATEWAY_URL = process.env.REACT_APP_GATEWAY_URL || 'http://localhost:8762/api'
 
 class APIClient {
   private client: AxiosInstance
@@ -29,7 +35,7 @@ class APIClient {
       },
     })
 
-    // Request interceptor: Attach JWT token
+    // REQUEST INTERCEPTOR: Attach JWT token to all requests
     this.client.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('authToken')
@@ -41,11 +47,12 @@ class APIClient {
       (error) => Promise.reject(error)
     )
 
-    // Response interceptor: Handle errors
+    // RESPONSE INTERCEPTOR: Handle errors and token refresh
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
+          // Token expired - clear localStorage and redirect to login
           localStorage.removeItem('authToken')
           localStorage.removeItem('user')
           window.location.href = '/login'
@@ -55,13 +62,13 @@ class APIClient {
     )
   }
 
-  // ==================== USER SERVICE ====================
+  // ==================== USER SERVICE (Port 8001) ====================
   
   async registerUser(data: {
     name: string
     email: string
     password: string
-    role: 'CUSTOMER' | 'SALON' | 'ADMIN'
+    role: 'CUSTOMER' | 'SALON_OWNER' | 'ADMIN'
     phone: string
   }) {
     const response = await this.client.post('/users/register', data)
@@ -84,7 +91,7 @@ class APIClient {
   async logoutUser() {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
-    return { message: 'Logged out' }
+    return { message: 'Logged out successfully' }
   }
 
   async getUserProfile(userId: string) {
@@ -97,7 +104,7 @@ class APIClient {
     return response.data
   }
 
-  // ==================== SALON SERVICE ====================
+  // ==================== SALON SERVICE (Port 8002) ====================
 
   async getSalons(page = 1, limit = 10, search?: string) {
     const params = new URLSearchParams({
@@ -132,22 +139,18 @@ class APIClient {
     return (await this.client.delete(`/salons/${id}`)).data
   }
 
-  // ==================== SERVICE OFFERING ====================
+  // ==================== SERVICE OFFERING (Port 8003) ====================
 
-  async getServices(page = 1, limit = 20) {
+  async getServicesBySalonId(salonId: string, page = 1, limit = 20) {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     })
-    return (await this.client.get(`/services?${params}`)).data
+    return (await this.client.get(`/salons/${salonId}/services?${params}`)).data
   }
 
   async getServiceById(id: string) {
     return (await this.client.get(`/services/${id}`)).data
-  }
-
-  async getServices(salonId: string) {
-    return (await this.client.get(`/salons/${salonId}/services`)).data
   }
 
   async getServicesByCategory(categoryId: string) {
@@ -166,7 +169,7 @@ class APIClient {
     return (await this.client.delete(`/services/${id}`)).data
   }
 
-  // ==================== CATEGORY SERVICE ====================
+  // ==================== CATEGORY SERVICE (Port 8004) ====================
 
   async getCategories() {
     return (await this.client.get('/categories')).data
@@ -188,7 +191,7 @@ class APIClient {
     return (await this.client.delete(`/categories/${id}`)).data
   }
 
-  // ==================== BOOKING SERVICE ====================
+  // ==================== BOOKING SERVICE (Port 8005) ====================
 
   async createBooking(data: {
     userId: string
@@ -233,7 +236,7 @@ class APIClient {
     return (await this.client.get(`/salons/${salonId}/availability?date=${date}`)).data
   }
 
-  // ==================== PAYMENT SERVICE ====================
+  // ==================== PAYMENT SERVICE (Port 8006) ====================
 
   async createPayment(data: {
     bookingId: string
@@ -275,7 +278,7 @@ class APIClient {
     return (await this.client.post(`/payments/${id}/refund`, { reason })).data
   }
 
-  // ==================== NOTIFICATION SERVICE ====================
+  // ==================== NOTIFICATION SERVICE (Port 8007) ====================
 
   async getNotifications(userId: string, page = 1, limit = 20) {
     const params = new URLSearchParams({
@@ -290,8 +293,7 @@ class APIClient {
   }
 
   async sendEmailNotification(email: string, subject: string, message: string) {
-    return (await this.client.post('/notifications/email', { email, subject, message }
-    )).data
+    return (await this.client.post('/notifications/email', { email, subject, message })).data
   }
 }
 
