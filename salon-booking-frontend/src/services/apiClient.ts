@@ -48,13 +48,18 @@ class APIClient {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
+        // ✅ CORS headers for frontend requests
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': '*',
       },
+      withCredentials: false, // Set to true if backend sends credentials
     })
 
     // REQUEST INTERCEPTOR: Attach JWT token to all requests
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('authToken')
+        // Try both 'authToken' and 'token' for compatibility
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token')
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -70,6 +75,7 @@ class APIClient {
         if (error.response?.status === 401) {
           // Token expired - clear localStorage and redirect to login
           localStorage.removeItem('authToken')
+          localStorage.removeItem('token')
           localStorage.removeItem('user')
           window.location.href = '/login'
         }
@@ -90,6 +96,7 @@ class APIClient {
     const response = await this.client.post('/users/register', data)
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token)
+      localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
     }
     return response.data
@@ -99,6 +106,17 @@ class APIClient {
     const response = await this.client.post('/users/login', { email, password })
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token)
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
+    return response.data
+  }
+
+  async login(data: { email: string; password: string }) {
+    const response = await this.client.post('/users/login', data)
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token)
+      localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
     }
     return response.data
@@ -106,6 +124,7 @@ class APIClient {
 
   async logoutUser() {
     localStorage.removeItem('authToken')
+    localStorage.removeItem('token')
     localStorage.removeItem('user')
     return { message: 'Logged out successfully' }
   }
