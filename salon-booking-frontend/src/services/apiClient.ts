@@ -5,10 +5,10 @@ import axios, { AxiosInstance } from 'axios'
  * API CLIENT - Microservices Gateway Integration
  * ============================================
  * 
- * Routes ALL requests through Spring Cloud Gateway (Port 8762)
+ * Routes ALL requests through Spring Cloud Gateway (Port 8862)
  * All microservices are discovered and routed via Eureka
  * 
- * GATEWAY: http://localhost:8762/api
+ * GATEWAY: http://localhost:8862/api
  * EUREKA: http://localhost:8761
  * 
  * MICROSERVICES (Registered with Eureka):
@@ -21,7 +21,23 @@ import axios, { AxiosInstance } from 'axios'
  * - NOTIFICATION-SERVICE: :8007
  */
 
-const GATEWAY_URL = process.env.REACT_APP_GATEWAY_URL || 'http://localhost:8762/api'
+// ✅ FIXED: Use import.meta.env for Vite OR handle both Create React App and Vite
+const getGatewayUrl = () => {
+  // For Vite projects
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GATEWAY_URL) {
+    return import.meta.env.VITE_GATEWAY_URL
+  }
+  
+  // For Create React App projects (REACT_APP_ prefix)
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.REACT_APP_GATEWAY_URL) {
+    return (window as any).__ENV__.REACT_APP_GATEWAY_URL
+  }
+  
+  // Fallback to default
+  return 'http://localhost:8862/api'
+}
+
+const GATEWAY_URL = getGatewayUrl()
 
 class APIClient {
   private client: AxiosInstance
