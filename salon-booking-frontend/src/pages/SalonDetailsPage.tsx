@@ -13,6 +13,7 @@ export default function SalonDetailsPage() {
   const [salon, setSalon] = useState<Salon | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) fetchSalonDetails()
@@ -21,12 +22,16 @@ export default function SalonDetailsPage() {
   const fetchSalonDetails = async () => {
     try {
       setLoading(true)
+      setError(null)
       const salonData = await apiClient.getSalonById(id!)
-      const servicesData = await apiClient.getServices(id!)
+      const servicesResponse = await apiClient.getServicesBySalonId(id!, 1, 20)
       setSalon(salonData)
-      setServices(servicesData)
-    } catch (error) {
-      console.error('Failed to fetch salon details:', error)
+      // Handle both direct array and wrapped response
+      setServices(Array.isArray(servicesResponse) ? servicesResponse : (servicesResponse.services || []))
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to fetch salon details'
+      console.error('Failed to fetch salon details:', err)
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -45,6 +50,12 @@ export default function SalonDetailsPage() {
     return (
       <div className="text-center py-12">
         <p className="text-slate-600 text-lg">Salon not found</p>
+        <button
+          onClick={() => navigate('/salons')}
+          className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+        >
+          Back to Salons
+        </button>
       </div>
     )
 
@@ -107,6 +118,14 @@ export default function SalonDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <p className="font-semibold">Error Loading Services</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Services Section */}
       <section className="mb-8">
