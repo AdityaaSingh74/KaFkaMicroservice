@@ -1,7 +1,59 @@
 import { useState, useEffect } from 'react'
-import { apiClient } from '../../services/apiClient'
+import { useNavigate } from 'react-router-dom'
 import { Booking } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+
+// Mock bookings data
+const MOCK_BOOKINGS: Booking[] = [
+  {
+    id: 'BOOKING_1704820000000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '1',
+    date: '2026-01-15',
+    time: '10:30',
+    status: 'CONFIRMED',
+    totalPrice: 300,
+    notes: 'Haircut service',
+    createdAt: '2026-01-09T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1704906400000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '2',
+    date: '2026-01-12',
+    time: '14:00',
+    status: 'COMPLETED',
+    totalPrice: 500,
+    notes: 'Facial service',
+    createdAt: '2026-01-08T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1704992800000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '3',
+    date: '2026-01-20',
+    time: '11:00',
+    status: 'PENDING',
+    totalPrice: 800,
+    notes: 'Hair coloring service',
+    createdAt: '2026-01-07T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1705079200000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '4',
+    date: '2026-01-25',
+    time: '16:30',
+    status: 'CANCELLED',
+    totalPrice: 600,
+    notes: 'Massage service',
+    createdAt: '2026-01-06T01:30:00Z',
+  },
+]
 
 interface CustomerStats {
   totalBookings: number
@@ -12,6 +64,7 @@ interface CustomerStats {
 }
 
 export default function CustomerDashboard() {
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [stats, setStats] = useState<CustomerStats>({
     totalBookings: 0,
@@ -32,16 +85,14 @@ export default function CustomerDashboard() {
       setLoading(true)
       setError(null)
 
-      // Fetch user bookings (mock userId for now)
-      const bookingsData = await apiClient.getCustomerBookings('1')
-      const bookingsList = Array.isArray(bookingsData) ? bookingsData : bookingsData.bookings || []
-      setBookings(bookingsList)
+      // Use mock bookings data
+      setBookings(MOCK_BOOKINGS)
 
-      // Calculate stats
-      calculateStats(bookingsList)
+      // Calculate stats from mock data
+      calculateStats(MOCK_BOOKINGS)
     } catch (err: any) {
       console.error('Error fetching customer data:', err)
-      setError(err.response?.data?.message || 'Failed to fetch bookings')
+      setError('Failed to fetch bookings')
     } finally {
       setLoading(false)
     }
@@ -112,7 +163,7 @@ export default function CustomerDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-4 px-6 font-semibold text-slate-900">Salon</th>
+                  <th className="text-left py-4 px-6 font-semibold text-slate-900">Booking ID</th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-900">Service</th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-900">Date & Time</th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-900">Price</th>
@@ -123,10 +174,10 @@ export default function CustomerDashboard() {
               <tbody>
                 {bookings.map((booking) => (
                   <tr key={booking.id} className="border-b border-slate-200 hover:bg-slate-50 transition">
-                    <td className="py-4 px-6 text-slate-900 font-medium">Salon {booking.salonId}</td>
+                    <td className="py-4 px-6 text-slate-900 font-mono text-sm">{booking.id}</td>
                     <td className="py-4 px-6 text-slate-700">Service {booking.serviceId}</td>
                     <td className="py-4 px-6 text-slate-700">
-                      {new Date(booking.date).toLocaleDateString()} at {booking.time}
+                      {new Date(booking.date).toLocaleDateString('en-IN')} at {booking.time}
                     </td>
                     <td className="py-4 px-6 text-slate-900 font-semibold">₹{booking.totalPrice}</td>
                     <td className="py-4 px-6">
@@ -138,16 +189,25 @@ export default function CustomerDashboard() {
                       <div className="flex gap-2">
                         {booking.status === 'CONFIRMED' && (
                           <>
-                            <button className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">
+                            <button
+                              onClick={() => navigate(`/booking/${booking.id}/reschedule`)}
+                              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                            >
                               Reschedule
                             </button>
-                            <button className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
+                            <button
+                              onClick={() => navigate(`/booking/${booking.id}/cancel`)}
+                              className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
+                            >
                               Cancel
                             </button>
                           </>
                         )}
                         {booking.status === 'COMPLETED' && (
-                          <button className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition">
+                          <button
+                            onClick={() => navigate('/salons')}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition"
+                          >
                             Rebook
                           </button>
                         )}
@@ -161,9 +221,12 @@ export default function CustomerDashboard() {
         ) : (
           <div className="text-center py-12">
             <p className="text-slate-600 text-lg mb-4">No bookings yet</p>
-            <a href="/salons" className="inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+            <button
+              onClick={() => navigate('/salons')}
+              className="inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+            >
               Browse Salons
-            </a>
+            </button>
           </div>
         )}
       </div>
