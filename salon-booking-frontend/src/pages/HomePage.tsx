@@ -26,54 +26,81 @@ export default function HomePage() {
   }
 
   return (
-    <div>
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg p-12 mb-12 text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Salon Booking</h1>
-        <p className="text-xl mb-8">Find and book the best salons near you instantly</p>
-        <Link
-          to="/salons"
-          className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
-        >
-          Browse Salons
-        </Link>
-      </div>
-
-      {/* Featured Salons */}
-      <section>
-        <h2 className="text-3xl font-bold mb-8">Featured Salons</h2>
-        {loading ? (
-          <LoadingSpinner />
-        ) : salons.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {salons.map((salon) => (
-              <SalonCard key={salon.id} salon={salon} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600">No salons found. Check back later!</p>
-          </div>
-        )}
-      </section>
-
-      {/* Stats Section */}
-      <section className="mt-16 bg-gray-50 rounded-lg p-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div>
-            <p className="text-4xl font-bold text-blue-600 mb-2">500+</p>
-            <p className="text-gray-600">Salons</p>
-          </div>
-          <div>
-            <p className="text-4xl font-bold text-green-600 mb-2">10K+</p>
-            <p className="text-gray-600">Happy Customers</p>
-          </div>
-          <div>
-            <p className="text-4xl font-bold text-purple-600 mb-2">50K+</p>
-            <p className="text-gray-600">Bookings</p>
+    <div className="w-screen relative -ml-[calc((100vw-100%)/2)]">
+      {/* Hero Section - Full Width Edge to Edge */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex flex-col items-start justify-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight max-w-3xl">
+              Book Your Perfect Salon Experience
+            </h1>
+            <p className="text-lg md:text-xl text-slate-200 mb-8 md:mb-10 max-w-2xl leading-relaxed">
+              Discover top-rated salons, browse services, and book instantly. Get the best pampering experience at your fingertips.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link
+                to="/salons"
+                className="inline-block bg-white text-slate-900 px-8 py-3 md:py-4 rounded-lg font-semibold hover:bg-slate-50 transition-colors duration-200 text-center"
+              >
+                Browse Salons
+              </Link>
+              <Link
+                to="/register"
+                className="inline-block border-2 border-white text-white px-8 py-3 md:py-4 rounded-lg font-semibold hover:bg-slate-700 transition-colors duration-200 text-center"
+              >
+                Create Account
+              </Link>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Main Content - Back to normal width constraint */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+        {/* Featured Salons Section */}
+        <section className="mb-16 md:mb-20">
+          <div className="mb-8 md:mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">Featured Salons</h2>
+            <p className="text-slate-600 text-lg">Handpicked salons offering premium services</p>
+          </div>
+          
+          {loading ? (
+            <LoadingSpinner />
+          ) : salons.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {salons.map((salon) => (
+                <SalonCard key={salon.id} salon={salon} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-slate-50 rounded-lg">
+              <p className="text-slate-600 text-lg">No salons available yet. Check back soon!</p>
+            </div>
+          )}
+        </section>
+
+        {/* Stats Section */}
+        <section className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-8 md:p-12 border border-slate-200">
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-10 text-center">Why Choose Us</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            <div className="text-center">
+              <div className="text-5xl md:text-6xl font-bold text-slate-900 mb-3">500+</div>
+              <p className="text-slate-700 font-medium text-lg">Verified Salons</p>
+              <p className="text-slate-600 text-sm mt-2">Quality assured partners</p>
+            </div>
+            <div className="text-center">
+              <div className="text-5xl md:text-6xl font-bold text-slate-900 mb-3">10K+</div>
+              <p className="text-slate-700 font-medium text-lg">Happy Customers</p>
+              <p className="text-slate-600 text-sm mt-2">Real reviews & ratings</p>
+            </div>
+            <div className="text-center">
+              <div className="text-5xl md:text-6xl font-bold text-slate-900 mb-3">50K+</div>
+              <p className="text-slate-700 font-medium text-lg">Bookings Monthly</p>
+              <p className="text-slate-600 text-sm mt-2">Trusted platform</p>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

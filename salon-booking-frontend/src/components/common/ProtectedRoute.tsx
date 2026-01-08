@@ -1,21 +1,30 @@
-import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { User } from '../types'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requiredRole?: User['role']
+  requiredRole?: string
 }
 
-export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+/**
+ * ProtectedRoute Component
+ * TESTING MODE: All authentication checks are bypassed.
+ * User is always authenticated with mock data.
+ * This will be re-enabled when backend is ready.
+ */
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  // Bypass all authentication checks
+  // Mock user is always available from authStore
   const user = useAuthStore((state) => state.user)
 
+  // In testing mode, we don't check roles or redirect to login
+  // Just render the children directly
   if (!user) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/" replace />
+    // This shouldn't happen as mock user is always available
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-slate-600">Loading...</p>
+      </div>
+    )
   }
 
   return <>{children}</>
