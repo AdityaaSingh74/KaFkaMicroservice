@@ -267,6 +267,11 @@ class APIClient {
     return (await this.client.get(`/bookings/api/salons/${salonId}/availability?date=${date}`)).data
   }
 
+  // NEW: Get booked slots for a specific date
+  async getBookedSlots(salonId: string, date: string) {
+    return (await this.client.get(`/bookings/api/salons/${salonId}/booked-slots?date=${date}`)).data
+  }
+
   // ==================== PAYMENT SERVICE (Eureka: PAYMENT-SERVICE) ====================
 
   async createPayment(data: {
@@ -307,6 +312,15 @@ class APIClient {
 
   async refundPayment(id: string, reason: string) {
     return (await this.client.post(`/payments/api/payments/${id}/refund`, { reason })).data
+  }
+
+  // NEW: Create Stripe payment link
+  async createPaymentLink(data: {
+    bookingId: string
+    amount: number
+    paymentMethod?: string
+  }) {
+    return (await this.client.post('/payments/api/payments/stripe/create-link', data)).data
   }
 
   // ==================== NOTIFICATION SERVICE (Eureka: NOTIFICATION-SERVICE) ====================
