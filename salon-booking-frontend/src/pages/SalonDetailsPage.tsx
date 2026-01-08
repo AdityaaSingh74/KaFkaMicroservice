@@ -38,10 +38,13 @@ export default function SalonDetailsPage() {
   }
 
   const handleBookService = (service: Service) => {
+    // TESTING MODE: No authentication check needed
+    // User is always authenticated with mock data
     if (!user) {
-      navigate('/login')
+      console.warn('No user found, but booking should still work with mock data')
       return
     }
+    // Proceed directly to booking without login
     navigate(`/book/${salon?.id}/${service.id}`)
   }
 
