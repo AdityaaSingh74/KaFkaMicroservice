@@ -21,6 +21,7 @@ import axios, { AxiosInstance } from 'axios'
  * - BOOKING-SERVICE: /bookings/api/...
  * - PAYMENT-SERVICE: /payments/api/...
  * - NOTIFICATION-SERVICE: /notifications/api/...
+ * - REVIEW-SERVICE: /reviews/api/...
  */
 
 const getGatewayUrl = () => {
@@ -247,7 +248,23 @@ class APIClient {
     return (await this.client.get(`/bookings/api/users/${userId}/bookings?${params}`)).data
   }
 
+  async getCustomerBookings(userId: string, page = 1, limit = 10) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    })
+    return (await this.client.get(`/bookings/api/users/${userId}/bookings?${params}`)).data
+  }
+
   async getSalonBookings(salonId: string, page = 1, limit = 10) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    })
+    return (await this.client.get(`/bookings/api/salons/${salonId}/bookings?${params}`)).data
+  }
+
+  async getBookingsBySalonId(salonId: string, page = 1, limit = 10) {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -263,11 +280,14 @@ class APIClient {
     return (await this.client.post(`/bookings/api/bookings/${id}/cancel`, {})).data
   }
 
+  async confirmBooking(id: string) {
+    return (await this.client.post(`/bookings/api/bookings/${id}/confirm`, {})).data
+  }
+
   async getAvailability(salonId: string, date: string) {
     return (await this.client.get(`/bookings/api/salons/${salonId}/availability?date=${date}`)).data
   }
 
-  // NEW: Get booked slots for a specific date
   async getBookedSlots(salonId: string, date: string) {
     return (await this.client.get(`/bookings/api/salons/${salonId}/booked-slots?date=${date}`)).data
   }
@@ -314,7 +334,6 @@ class APIClient {
     return (await this.client.post(`/payments/api/payments/${id}/refund`, { reason })).data
   }
 
-  // NEW: Create Stripe payment link
   async createPaymentLink(data: {
     bookingId: string
     amount: number
@@ -337,8 +356,43 @@ class APIClient {
     return (await this.client.put(`/notifications/api/notifications/${id}/read`, {})).data
   }
 
+  async markAllNotificationsAsRead(userId: string) {
+    return (await this.client.put(`/notifications/api/users/${userId}/notifications/read-all`, {})).data
+  }
+
   async sendEmailNotification(email: string, subject: string, message: string) {
     return (await this.client.post('/notifications/api/notifications/email', { email, subject, message })).data
+  }
+
+  // ==================== REVIEW SERVICE (Eureka: REVIEW-SERVICE) ====================
+
+  async createReview(data: {
+    bookingId: string
+    salonId: string
+    rating: number
+    comment: string
+  }) {
+    return (await this.client.post('/reviews/api/reviews', data)).data
+  }
+
+  async getReviewsBySalonId(salonId: string, page = 1, limit = 10) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    })
+    return (await this.client.get(`/reviews/api/salons/${salonId}/reviews?${params}`)).data
+  }
+
+  async getRatingSummary(salonId: string) {
+    return (await this.client.get(`/reviews/api/salons/${salonId}/summary`)).data
+  }
+
+  async updateReview(id: string, data: any) {
+    return (await this.client.put(`/reviews/api/reviews/${id}`, data)).data
+  }
+
+  async deleteReview(id: string) {
+    return (await this.client.delete(`/reviews/api/reviews/${id}`)).data
   }
 }
 
