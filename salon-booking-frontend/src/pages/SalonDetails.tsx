@@ -9,6 +9,35 @@ interface CartItem {
   quantity: number
 }
 
+// Mock data for services
+const MOCK_SERVICES: Service[] = [
+  { id: '1', salonId: '1', name: 'Haircut', category: 'haircut', price: 300, duration: 30, description: 'Professional haircut' },
+  { id: '2', salonId: '1', name: 'Facial', category: 'facial', price: 500, duration: 45, description: 'Relaxing facial' },
+  { id: '3', salonId: '1', name: 'Hair Coloring', category: 'hair coloring', price: 800, duration: 60, description: 'Hair coloring service' },
+  { id: '4', salonId: '1', name: 'Massage', category: 'massage', price: 600, duration: 60, description: 'Full body massage' },
+  { id: '5', salonId: '1', name: 'Pedicure', category: 'pedicure', price: 400, duration: 45, description: 'Pedicure service' },
+  { id: '6', salonId: '1', name: 'Manicure', category: 'manicure', price: 350, duration: 30, description: 'Manicure service' },
+]
+
+// Mock salon data
+const MOCK_SALON: Salon = {
+  id: '1',
+  name: 'Premium Salon & Spa',
+  address: '123 Main Street, Tech Park',
+  city: 'Baddi',
+  phone: '9876543210',
+  email: 'salon@example.com',
+  rating: 4.5,
+  totalReviews: 156,
+  description: 'Your perfect destination for beauty and wellness services',
+  openingTime: '10:00',
+  closingTime: '18:00',
+  createdAt: '2024-01-01',
+}
+
+// Mock booked slots
+const MOCK_BOOKED_SLOTS: string[] = ['11:00', '12:00', '14:30', '16:00']
+
 export default function SalonDetails() {
   const { salonId } = useParams<{ salonId: string }>()
   const navigate = useNavigate()
@@ -21,27 +50,13 @@ export default function SalonDetails() {
   const [showBooking, setShowBooking] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
-  const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [bookedSlots, setBookedSlots] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const timeSlots = [
-    '10:00',
-    '10:30',
-    '11:00',
-    '11:30',
-    '12:00',
-    '12:30',
-    '14:00',
-    '14:30',
-    '15:00',
-    '15:30',
-    '16:00',
-    '16:30',
-    '17:00',
-    '17:30',
-    '18:00',
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00',
   ]
 
   useEffect(() => {
@@ -49,43 +64,29 @@ export default function SalonDetails() {
   }, [salonId])
 
   useEffect(() => {
-    if (selectedDate && salonId) {
-      fetchBookedSlots()
+    if (selectedDate) {
+      // Simulate fetching booked slots - use mock data
+      setBookedSlots(MOCK_BOOKED_SLOTS)
     }
-  }, [selectedDate, salonId])
+  }, [selectedDate])
 
   const fetchSalonDetails = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      if (!salonId) return
-
-      const salonData = await apiClient.getSalonById(salonId)
-      setSalon(salonData)
-
-      const servicesData = await apiClient.getServicesBySalonId(salonId)
-      const servicesList = Array.isArray(servicesData) ? servicesData : servicesData.data || []
-      setServices(servicesList)
+      // Use mock data
+      setSalon(MOCK_SALON)
+      setServices(MOCK_SERVICES)
 
       // Extract unique categories
-      const cats = ['all', ...new Set(servicesList.map((s: Service) => s.category))]
+      const cats = ['all', ...new Set(MOCK_SERVICES.map((s) => s.category))]
       setCategories(cats)
     } catch (err: any) {
-      console.error('Error fetching salon details:', err)
-      setError(err.response?.data?.message || 'Failed to load salon details')
+      console.error('Error:', err)
+      setError('Failed to load salon details')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchBookedSlots = async () => {
-    try {
-      if (!salonId) return
-      const slots = await apiClient.getBookedSlots(salonId, selectedDate)
-      setBookedSlots(Array.isArray(slots) ? slots : slots.bookedSlots || [])
-    } catch (err) {
-      console.error('Error fetching booked slots:', err)
     }
   }
 
@@ -129,28 +130,25 @@ export default function SalonDetails() {
     }
 
     try {
-      const userId = localStorage.getItem('userId') || '1' // Mock user ID
-
-      // For multiple services, create booking for each or aggregate
-      // Here we'll create a single booking with first service for simplicity
-      // In production, handle multiple services properly
-
-      const bookingData = {
-        userId,
-        salonId: salonId || '',
+      // Use mock booking data
+      const mockBooking = {
+        id: `BOOKING_${Date.now()}`,
+        customerId: '1',
+        salonId: salonId || '1',
         serviceId: cart[0].service.id,
-        bookingDate: selectedDate,
-        bookingTime: selectedTime,
+        date: selectedDate,
+        time: selectedTime,
+        status: 'PENDING' as const,
+        totalPrice: getTotalPrice(),
         notes: `Booking ${cart.length} service(s)`,
+        createdAt: new Date().toISOString(),
       }
 
-      const booking = await apiClient.createBooking(bookingData)
-
-      // Redirect to payment
-      navigate(`/payment/${booking.id}`, { state: { booking, total: getTotalPrice() } })
+      // Redirect to payment with mock booking
+      navigate(`/payment/${mockBooking.id}`, { state: { booking: mockBooking, total: getTotalPrice() } })
     } catch (err: any) {
-      console.error('Error creating booking:', err)
-      setError(err.response?.data?.message || 'Failed to create booking')
+      console.error('Error:', err)
+      setError('Failed to create booking')
     }
   }
 
@@ -177,9 +175,7 @@ export default function SalonDetails() {
               <div className="text-right">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-2xl font-bold text-yellow-500">⭐</span>
-                  <span className="text-xl font-bold text-slate-900">
-                    {salon.rating || 'N/A'}
-                  </span>
+                  <span className="text-xl font-bold text-slate-900">{salon.rating}</span>
                 </div>
                 <p className="text-slate-600">📞 {salon.phone}</p>
                 <p className="text-slate-600">📧 {salon.email}</p>
