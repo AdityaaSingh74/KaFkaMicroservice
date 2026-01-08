@@ -1,178 +1,335 @@
 import { useState, useEffect } from 'react'
-import { useAuthStore } from '../../store/authStore'
 import { apiClient } from '../../services/apiClient'
-import { Booking, Service } from '../../types'
-import BookingCard from '../../components/common/BookingCard'
-import ServiceCard from '../../components/common/ServiceCard'
+import { Booking, Salon } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
+interface DashboardStats {
+  totalBookings: number
+  totalRevenue: number
+  totalRefunds: number
+  cancelledBookings: number
+  todayBookings: number
+}
+
 export default function SalonOwnerDashboard() {
-  const user = useAuthStore((state) => state.user)
+  const [salon, setSalon] = useState<Salon | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showAddService, setShowAddService] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    price: '',
-    duration: '',
-    description: '',
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBookings: 0,
+    totalRevenue: 0,
+    totalRefunds: 0,
+    cancelledBookings: 0,
+    todayBookings: 0,
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
-    if (user) fetchData()
-  }, [user])
+    fetchDashboardData()
+  }, [])
 
-  const fetchData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const bookingsData = await apiClient.getSalonBookings(user!.id)
-      const servicesData = await apiClient.getServices(user!.id)
-      setBookings(bookingsData)
-      setServices(servicesData)
-    } catch (error) {
-      console.error('Failed to fetch salon data:', error)
+      setError(null)
+
+      // Fetch salon data (mock saloonId for now)
+      const salonData = await apiClient.getSalonById('1')
+      setSalon(salonData)
+
+      // Fetch bookings for this salon
+      const bookingsData = await apiClient.getBookingsBySalonId('1')
+      setBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData.bookings || [])
+
+      // Calculate stats
+      calculateStats(Array.isArray(bookingsData) ? bookingsData : bookingsData.bookings || [])
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err)
+      setError(err.response?.data?.message || 'Failed to fetch dashboard data')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAddService = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await apiClient.addService(user!.id, {
-        name: formData.name,
-        category: formData.category,
-        price: parseInt(formData.price),
-        duration: parseInt(formData.duration),
-        description: formData.description,
-      })
-      setFormData({ name: '', category: '', price: '', duration: '', description: '' })
-      setShowAddService(false)
-      fetchData()
-    } catch (error) {
-      console.error('Failed to add service:', error)
+  const calculateStats = (bookingsList: Booking[]) => {
+    const today = new Date().toDateString()
+    let totalRev = 0
+    let refunds = 0
+    let cancelled = 0
+    let todayCount = 0
+
+    bookingsList.forEach((booking) => {
+      if (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') {
+        totalRev += booking.totalPrice || 0
+      }
+      if (booking.status === 'REFUNDED') {
+        refunds += booking.totalPrice || 0
+      }
+      if (booking.status === 'CANCELLED') {
+        cancelled += 1
+      }
+      if (new Date(booking.date).toDateString() === today) {
+        todayCount += 1
+      }
+    })
+
+    setStats({
+      totalBookings: bookingsList.length,
+      totalRevenue: totalRev,
+      totalRefunds: refunds,
+      cancelledBookings: cancelled,
+      todayBookings: todayCount,
+    })
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED':
+        return 'bg-green-100 text-green-800'
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'COMPLETED':
+        return 'bg-blue-100 text-blue-800'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800'
+      case 'REFUNDED':
+        return 'bg-purple-100 text-purple-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
+  if (loading) return <LoadingSpinner />
+
   return (
-    <div>
-      <h1 className="text-4xl font-bold mb-8">Salon Dashboard</h1>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-blue-50 rounded-lg p-6">
-          <p className="text-gray-600">Total Bookings</p>
-          <p className="text-3xl font-bold text-blue-600">{bookings.length}</p>
-        </div>
-        <div className="bg-green-50 rounded-lg p-6">
-          <p className="text-gray-600">Services</p>
-          <p className="text-3xl font-bold text-green-600">{services.length}</p>
-        </div>
-        <div className="bg-purple-50 rounded-lg p-6">
-          <p className="text-gray-600">Revenue</p>
-          <p className="text-3xl font-bold text-purple-600">
-            ₹{bookings.reduce((sum, b) => sum + b.totalPrice, 0)}
-          </p>
-        </div>
-      </div>
-
-      {/* Add Service Section */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+      {/* Header */}
       <div className="mb-8">
-        <button
-          onClick={() => setShowAddService(!showAddService)}
-          className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition"
-        >
-          {showAddService ? 'Cancel' : 'Add New Service'}
-        </button>
-
-        {showAddService && (
-          <form onSubmit={handleAddService} className="bg-white rounded-lg shadow p-6 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Service Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Category"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                required
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Price"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                required
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Duration (minutes)"
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                required
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <textarea
-                placeholder="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 md:col-span-2"
-                rows={2}
-              />
-            </div>
-            <button
-              type="submit"
-              className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
-            >
-              Add Service
-            </button>
-          </form>
-        )}
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Salon Dashboard</h1>
+        {salon && <p className="text-slate-600">{salon.name}</p>}
       </div>
 
-      {loading ? (
-        <LoadingSpinner />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Bookings */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Recent Bookings</h2>
-            {bookings.length > 0 ? (
-              <div className="space-y-4">
-                {bookings.slice(0, 5).map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">No bookings yet</p>
-            )}
-          </div>
-
-          {/* Services */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Your Services</h2>
-            {services.length > 0 ? (
-              <div className="space-y-4">
-                {services.map((service) => (
-                  <ServiceCard key={service.id} service={service} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">No services added</p>
-            )}
-          </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
         </div>
       )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Bookings"
+          value={stats.totalBookings}
+          icon="📅"
+          color="bg-blue-500"
+        />
+        <StatCard
+          title="Total Revenue"
+          value={`₹${stats.totalRevenue.toFixed(2)}`}
+          icon="💰"
+          color="bg-green-500"
+        />
+        <StatCard
+          title="Total Refunds"
+          value={`₹${stats.totalRefunds.toFixed(2)}`}
+          icon="💸"
+          color="bg-orange-500"
+        />
+        <StatCard
+          title="Cancelled"
+          value={stats.cancelledBookings}
+          icon="❌"
+          color="bg-red-500"
+        />
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="flex border-b border-slate-200">
+          {['overview', 'bookings', 'services', 'payments'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-4 px-6 font-semibold transition ${
+                activeTab === tab
+                  ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'overview' && <OverviewTab stats={stats} salon={salon} bookings={bookings} />}
+          {activeTab === 'bookings' && <BookingsTab bookings={bookings} getStatusColor={getStatusColor} />}
+          {activeTab === 'services' && <ServicesTab />}
+          {activeTab === 'payments' && <PaymentsTab bookings={bookings} />}
+        </div>
+      </div>
     </div>
   )
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string
+  value: string | number
+  icon: string
+  color: string
+}) {
+  return (
+    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-slate-200 hover:shadow-lg transition">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-slate-600 text-sm font-medium mb-1">{title}</p>
+          <p className="text-3xl font-bold text-slate-900">{value}</p>
+        </div>
+        <div className={`${color} w-12 h-12 rounded-lg flex items-center justify-center text-2xl`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OverviewTab({
+  stats,
+  salon,
+  bookings,
+}: {
+  stats: DashboardStats
+  salon: Salon | null
+  bookings: Booking[]
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Today's Overview */}
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-900 mb-4">Today's Overview</h3>
+        <p className="text-4xl font-bold text-blue-600">{stats.todayBookings}</p>
+        <p className="text-blue-700 mt-2">Bookings scheduled for today</p>
+      </div>
+
+      {/* Recent Bookings */}
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Bookings</h3>
+        <div className="space-y-3">
+          {bookings.slice(0, 5).map((booking) => (
+            <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
+              <div>
+                <p className="font-medium text-slate-900">Booking #{booking.id}</p>
+                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString()} at {booking.time}</p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(booking.status)}`}>
+                {booking.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BookingsTab({ bookings, getStatusColor }: { bookings: Booking[]; getStatusColor: (status: string) => string }) {
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Booking ID</th>
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Customer</th>
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Date & Time</th>
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Service</th>
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Price</th>
+              <th className="text-left py-3 px-4 font-semibold text-slate-900">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="border-b border-slate-200 hover:bg-slate-50 transition">
+                <td className="py-3 px-4 text-slate-900 font-medium">#{booking.id}</td>
+                <td className="py-3 px-4 text-slate-900">Customer {booking.customerId}</td>
+                <td className="py-3 px-4 text-slate-600">
+                  {new Date(booking.date).toLocaleDateString()} at {booking.time}
+                </td>
+                <td className="py-3 px-4 text-slate-600">Service {booking.serviceId}</td>
+                <td className="py-3 px-4 text-slate-900 font-semibold">₹{booking.totalPrice}</td>
+                <td className="py-3 px-4">
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                    {booking.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function ServicesTab() {
+  return (
+    <div className="text-center py-12">
+      <p className="text-slate-600 mb-4">Services management coming soon</p>
+      <button className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+        Add Service
+      </button>
+    </div>
+  )
+}
+
+function PaymentsTab({ bookings }: { bookings: Booking[] }) {
+  const totalPayments = bookings
+    .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+    .reduce((sum, b) => sum + (b.totalPrice || 0), 0)
+
+  return (
+    <div>
+      <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6 mb-6 border border-green-200">
+        <h3 className="text-lg font-semibold text-green-900 mb-2">Total Earnings</h3>
+        <p className="text-4xl font-bold text-green-600">₹{totalPayments.toFixed(2)}</p>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="font-semibold text-slate-900 mb-4">Recent Transactions</h3>
+        {bookings
+          .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+          .slice(0, 5)
+          .map((booking) => (
+            <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+              <div>
+                <p className="font-medium text-slate-900">Booking #{booking.id}</p>
+                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString()}</p>
+              </div>
+              <p className="text-lg font-bold text-green-600">+₹{booking.totalPrice}</p>
+            </div>
+          ))}
+      </div>
+    </div>
+  )
+}
+
+function getStatusBadge(status: string): string {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'bg-green-100 text-green-700'
+    case 'PENDING':
+      return 'bg-yellow-100 text-yellow-700'
+    case 'COMPLETED':
+      return 'bg-blue-100 text-blue-700'
+    case 'CANCELLED':
+      return 'bg-red-100 text-red-700'
+    default:
+      return 'bg-gray-100 text-gray-700'
+  }
 }
