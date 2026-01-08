@@ -1,7 +1,86 @@
 import { useState, useEffect } from 'react'
-import { apiClient } from '../../services/apiClient'
 import { Booking, Salon } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+
+// Mock salon data
+const MOCK_SALON: Salon = {
+  id: '1',
+  name: 'Premium Salon & Spa',
+  address: '123 Main Street, Tech Park',
+  city: 'Baddi',
+  phone: '9876543210',
+  email: 'salon@example.com',
+  rating: 4.5,
+  totalReviews: 156,
+  description: 'Your perfect destination for beauty and wellness services',
+  openingTime: '10:00',
+  closingTime: '18:00',
+  createdAt: '2024-01-01',
+}
+
+// Mock bookings data
+const MOCK_BOOKINGS: Booking[] = [
+  {
+    id: 'BOOKING_1704820000000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '1',
+    date: '2026-01-15',
+    time: '10:30',
+    status: 'CONFIRMED',
+    totalPrice: 300,
+    notes: 'Haircut service',
+    createdAt: '2026-01-09T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1704906400000',
+    customerId: '1',
+    salonId: '1',
+    serviceId: '2',
+    date: '2026-01-12',
+    time: '14:00',
+    status: 'COMPLETED',
+    totalPrice: 500,
+    notes: 'Facial service',
+    createdAt: '2026-01-08T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1704992800000',
+    customerId: '2',
+    salonId: '1',
+    serviceId: '3',
+    date: '2026-01-20',
+    time: '11:00',
+    status: 'PENDING',
+    totalPrice: 800,
+    notes: 'Hair coloring service',
+    createdAt: '2026-01-07T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1705079200000',
+    customerId: '3',
+    salonId: '1',
+    serviceId: '4',
+    date: '2026-01-25',
+    time: '16:30',
+    status: 'CANCELLED',
+    totalPrice: 600,
+    notes: 'Massage service',
+    createdAt: '2026-01-06T01:30:00Z',
+  },
+  {
+    id: 'BOOKING_1705165600000',
+    customerId: '4',
+    salonId: '1',
+    serviceId: '5',
+    date: new Date().toISOString().split('T')[0],
+    time: '15:00',
+    status: 'CONFIRMED',
+    totalPrice: 400,
+    notes: 'Pedicure service',
+    createdAt: '2026-01-05T01:30:00Z',
+  },
+]
 
 interface DashboardStats {
   totalBookings: number
@@ -34,19 +113,15 @@ export default function SalonOwnerDashboard() {
       setLoading(true)
       setError(null)
 
-      // Fetch salon data (mock saloonId for now)
-      const salonData = await apiClient.getSalonById('1')
-      setSalon(salonData)
-
-      // Fetch bookings for this salon
-      const bookingsData = await apiClient.getBookingsBySalonId('1')
-      setBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData.bookings || [])
+      // Use mock data
+      setSalon(MOCK_SALON)
+      setBookings(MOCK_BOOKINGS)
 
       // Calculate stats
-      calculateStats(Array.isArray(bookingsData) ? bookingsData : bookingsData.bookings || [])
+      calculateStats(MOCK_BOOKINGS)
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err)
-      setError(err.response?.data?.message || 'Failed to fetch dashboard data')
+      setError('Failed to fetch dashboard data')
     } finally {
       setLoading(false)
     }
@@ -118,30 +193,15 @@ export default function SalonOwnerDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Total Bookings"
-          value={stats.totalBookings}
-          icon="📅"
-          color="bg-blue-500"
-        />
+        <StatCard title="Total Bookings" value={stats.totalBookings} icon="📅" color="bg-blue-500" />
         <StatCard
           title="Total Revenue"
           value={`₹${stats.totalRevenue.toFixed(2)}`}
           icon="💰"
           color="bg-green-500"
         />
-        <StatCard
-          title="Total Refunds"
-          value={`₹${stats.totalRefunds.toFixed(2)}`}
-          icon="💸"
-          color="bg-orange-500"
-        />
-        <StatCard
-          title="Cancelled"
-          value={stats.cancelledBookings}
-          icon="❌"
-          color="bg-red-500"
-        />
+        <StatCard title="Total Refunds" value={`₹${stats.totalRefunds.toFixed(2)}`} icon="💸" color="bg-orange-500" />
+        <StatCard title="Cancelled" value={stats.cancelledBookings} icon="❌" color="bg-red-500" />
       </div>
 
       {/* Tabs */}
@@ -225,7 +285,7 @@ function OverviewTab({
             <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
               <div>
                 <p className="font-medium text-slate-900">Booking #{booking.id}</p>
-                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString()} at {booking.time}</p>
+                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString('en-IN')} at {booking.time}</p>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(booking.status)}`}>
                 {booking.status}
@@ -256,10 +316,10 @@ function BookingsTab({ bookings, getStatusColor }: { bookings: Booking[]; getSta
           <tbody>
             {bookings.map((booking) => (
               <tr key={booking.id} className="border-b border-slate-200 hover:bg-slate-50 transition">
-                <td className="py-3 px-4 text-slate-900 font-medium">#{booking.id}</td>
+                <td className="py-3 px-4 text-slate-900 font-mono text-sm">{booking.id}</td>
                 <td className="py-3 px-4 text-slate-900">Customer {booking.customerId}</td>
                 <td className="py-3 px-4 text-slate-600">
-                  {new Date(booking.date).toLocaleDateString()} at {booking.time}
+                  {new Date(booking.date).toLocaleDateString('en-IN')} at {booking.time}
                 </td>
                 <td className="py-3 px-4 text-slate-600">Service {booking.serviceId}</td>
                 <td className="py-3 px-4 text-slate-900 font-semibold">₹{booking.totalPrice}</td>
@@ -309,7 +369,7 @@ function PaymentsTab({ bookings }: { bookings: Booking[] }) {
             <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <div>
                 <p className="font-medium text-slate-900">Booking #{booking.id}</p>
-                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString()}</p>
+                <p className="text-sm text-slate-600">{new Date(booking.date).toLocaleDateString('en-IN')}</p>
               </div>
               <p className="text-lg font-bold text-green-600">+₹{booking.totalPrice}</p>
             </div>
