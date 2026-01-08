@@ -5,6 +5,9 @@ import AuthLayout from './components/layout/AuthLayout'
 import HomePage from './pages/HomePage'
 import SalonsPage from './pages/SalonsPage'
 import SalonDetailsPage from './pages/SalonDetailsPage'
+import BookingConfirmation from './pages/BookingConfirmation'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentCancelled from './pages/PaymentCancelled'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import CustomerDashboard from './pages/customer/Dashboard'
@@ -25,6 +28,36 @@ function App() {
           <Route path="/salons" element={<SalonsPage />} />
           <Route path="/salons/:id" element={<SalonDetailsPage />} />
         </Route>
+
+        {/* Booking Flow Routes */}
+        <Route
+          path="/book/:salonId/:serviceId"
+          element={
+            <ProtectedRoute requiredRole="CUSTOMER">
+              <MainLayout>
+                <BookingConfirmation />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment-success/:bookingId"
+          element={
+            <ProtectedRoute requiredRole="CUSTOMER">
+              <MainLayout>
+                <PaymentSuccess />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment-cancelled"
+          element={
+            <MainLayout>
+              <PaymentCancelled />
+            </MainLayout>
+          }
+        />
 
         {/* Auth Routes - Disabled for Testing */}
         {/* Redirect login and register to home since auth is bypassed */}
