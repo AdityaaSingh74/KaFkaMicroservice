@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { apiClient } from '../services/apiClient'
 
 type PaymentMethod = 'card' | 'upi' | 'wallet'
 
@@ -94,27 +93,8 @@ export default function PaymentPage() {
         return
       }
 
-      // Create payment
-      const paymentData = {
-        bookingId,
-        amount: total,
-        paymentMethod: paymentMethod.toUpperCase(),
-      }
-
-      const payment = await apiClient.createPayment(paymentData)
-
-      // Process payment based on method
-      let processDetails = {}
-      if (paymentMethod === 'card') {
-        processDetails = cardDetails
-      } else if (paymentMethod === 'upi') {
-        processDetails = { upiId }
-      }
-
-      await apiClient.processPayment(payment.id, processDetails)
-
-      // Confirm payment
-      await apiClient.confirmPayment(payment.id)
+      // Simulate payment processing with mock data
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
       setPaymentSuccess(true)
 
@@ -124,7 +104,7 @@ export default function PaymentPage() {
       }, 2000)
     } catch (err: any) {
       console.error('Payment error:', err)
-      setError(err.response?.data?.message || 'Payment failed. Please try again.')
+      setError('Payment failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -172,7 +152,10 @@ export default function PaymentPage() {
 
           <div className="space-y-3 mb-6">
             {(['card', 'upi', 'wallet'] as PaymentMethod[]).map((method) => (
-              <label key={method} className="flex items-center p-4 border-2 border-slate-200 rounded-lg cursor-pointer hover:border-blue-500 transition">
+              <label
+                key={method}
+                className="flex items-center p-4 border-2 border-slate-200 rounded-lg cursor-pointer hover:border-blue-500 transition"
+              >
                 <input
                   type="radio"
                   name="paymentMethod"
@@ -256,7 +239,7 @@ export default function PaymentPage() {
           {paymentMethod === 'wallet' && (
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-slate-700">💰 Use your wallet balance to complete this payment.</p>
-              <p className="text-sm text-slate-600 mt-2">Available balance: ₹0</p>
+              <p className="text-sm text-slate-600 mt-2">Available balance: ₹500</p>
             </div>
           )}
         </div>
