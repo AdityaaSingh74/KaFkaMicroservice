@@ -44,7 +44,7 @@ export default function SalonDetailsPage() {
       console.warn('No user found, but booking should still work with mock data')
       return
     }
-    // Proceed directly to booking without login
+    // Navigate to booking confirmation page with salonId and serviceId
     navigate(`/book/${salon?.id}/${service.id}`)
   }
 
