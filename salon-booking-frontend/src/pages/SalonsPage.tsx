@@ -3,6 +3,7 @@ import { DummySalonService } from '../services/dummySalonService'
 import type { Salon } from '../services/dummySalonService'
 import SalonCard from '../components/common/SalonCard'
 import LoadingSpinner from '../components/common/LoadingSpinner'
+import { apiClient } from '../services/apiClient'
 
 export default function SalonsPage() {
   const [salons, setSalons] = useState<Salon[]>([])
@@ -40,6 +41,8 @@ export default function SalonsPage() {
       const errorMsg = error.response?.data?.message || 'Failed to fetch salons'
       console.error('Failed to fetch salons:', error)
       setError(errorMsg)
+      setSalons([])  // ✅ Set empty array on error
+      setFilteredSalons([])
     } finally {
       setLoading(false)
     }
@@ -50,7 +53,7 @@ export default function SalonsPage() {
       {/* Header Section */}
       <div className="mb-8 md:mb-10">
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Explore Salons</h1>
-        <p className="text-slate-600 text-lg">Find and book from {salons.length} verified salons</p>
+        <p className="text-slate-600 text-lg">Find and book from {salons?.length || 0} verified salons</p>
       </div>
 
       {/* Error Message */}
@@ -87,7 +90,7 @@ export default function SalonsPage() {
         </div>
         {search && (
           <p className="mt-2 text-sm text-slate-600">
-            Found {filteredSalons.length} result{filteredSalons.length !== 1 ? 's' : ''}
+            Found {filteredSalons?.length || 0} result{(filteredSalons?.length || 0) !== 1 ? 's' : ''}
           </p>
         )}
       </div>
@@ -118,10 +121,10 @@ export default function SalonsPage() {
             Try Again
           </button>
         </div>
-      ) : filteredSalons.length > 0 ? (
+      ) : filteredSalons && filteredSalons.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {filteredSalons.map((salon) => (
-            <SalonCard key={salon.id} salon={salon} />
+            <SalonCard key={salon.id || salon._id} salon={salon} />
           ))}
         </div>
       ) : (
