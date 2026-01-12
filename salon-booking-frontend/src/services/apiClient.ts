@@ -1,34 +1,9 @@
 import axios, { AxiosInstance } from 'axios'
-
-/**
- * ============================================
- * API CLIENT - Microservices Gateway Integration
- * ============================================
- * 
- * Routes through Spring Cloud Gateway (Port 8862)
- * Services discovered via Eureka
- * 
- * GATEWAY: http://localhost:8862
- * EUREKA: http://localhost:8761
- * 
- * ROUTING PATTERN: /{EUREKA-SERVICE-NAME}/api/{endpoint}
- * 
- * MICROSERVICES (Registered with Eureka):
- * - USER-SERVICE: /users/api/...
- * - SALON-SERVICE: /salons/api/...
- * - SERVICE-OFFERING: /services/api/...
- * - CATEGORY-SERVICE: /categories/api/...
- * - BOOKING-SERVICE: /bookings/api/...
- * - PAYMENT-SERVICE: /payments/api/...
- * - NOTIFICATION-SERVICE: /notifications/api/...
- */
+import { getToken, updateToken, doLogout } from './keycloakService'
 
 const getGatewayUrl = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GATEWAY_URL) {
     return import.meta.env.VITE_GATEWAY_URL
-  }
-  if (typeof window !== 'undefined' && (window as any).__ENV__?.REACT_APP_GATEWAY_URL) {
-    return (window as any).__ENV__.REACT_APP_GATEWAY_URL
   }
   return 'http://localhost:8862'
 }
@@ -41,101 +16,79 @@ class APIClient {
   constructor() {
     this.client = axios.create({
       baseURL: GATEWAY_URL,
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Origin': '*',
-      },
-      withCredentials: false,
+      timeout: 30000,
+      headers: { 'Content-Type': 'application/json' },
     })
 
-    // REQUEST INTERCEPTOR: Attach JWT token to all requests
+    // Request interceptor - Add Keycloak token
     this.client.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('authToken') || localStorage.getItem('token')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
+      async (config) => {
+        try {
+          // Try to update token if it's about to expire
+          await updateToken(() => {
+            const token = getToken()
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`
+            }
+          })
+        } catch (error) {
+          // If token update fails, use existing token
+          const token = getToken()
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+          }
         }
+        
         return config
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        return Promise.reject(error)
+      }
     )
 
-    // RESPONSE INTERCEPTOR: Handle errors and token refresh
+    // Response interceptor - Handle 401 errors
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('authToken')
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          window.location.href = '/login'
+          console.error('❌ Unauthorized - logging out')
+          doLogout()
         }
         return Promise.reject(error)
       }
     )
   }
 
-  // ==================== USER SERVICE (Eureka: USER-SERVICE) ====================
-  
-  async registerUser(data: {
-    name: string
-    email: string
-    password: string
-    role: 'CUSTOMER' | 'SALON_OWNER' | 'ADMIN'
-    phone: string
-  }) {
-    const response = await this.client.post('/users/api/users/register', data)
-    if (response.data.token || response.data.accessToken) {
-      const token = response.data.token || response.data.accessToken
-      localStorage.setItem('authToken', token)
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
+  // ==================== HELPERS ====================
+
+  private convertObjectIdToString(obj: any): string {
+    if (!obj) return ''
+    if (typeof obj === 'string') return obj
+    if (obj.timestamp) return obj.timestamp.toString()
+    if (obj.$oid) return obj.$oid
+    return obj.id || obj._id || ''
+  }
+
+  private transformSalon(salon: any) {
+    if (!salon) return null
+    const id = this.convertObjectIdToString(salon.id)
+    return {
+      ...salon,
+      id,
+      _id: id,
+      images: Array.isArray(salon.images) ? salon.images : [],
+      rating: typeof salon.rating === 'number' ? salon.rating : 0,
+      city: salon.city || '',
     }
-    return response.data
   }
 
-  async loginUser(email: string, password: string) {
-    const response = await this.client.post('/users/api/users/login', { email, password })
-    if (response.data.token || response.data.accessToken) {
-      const token = response.data.token || response.data.accessToken
-      localStorage.setItem('authToken', token)
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
-    return response.data
+  private transformSalons(data: any) {
+    return Array.isArray(data)
+      ? data.map((s) => this.transformSalon(s)).filter(Boolean)
+      : []
   }
 
-  async login(data: { email: string; password: string }) {
-    const response = await this.client.post('/users/api/users/login', data)
-    if (response.data.token || response.data.accessToken) {
-      const token = response.data.token || response.data.accessToken
-      localStorage.setItem('authToken', token)
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
-    return response.data
-  }
-
-  async logoutUser() {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    return { message: 'Logged out successfully' }
-  }
-
-  async getUserProfile(userId: string) {
-    return (await this.client.get(`/users/api/users/${userId}`)).data
-  }
-
-  async updateUserProfile(userId: string, data: any) {
-    const response = await this.client.put(`/users/api/users/${userId}`, data)
-    localStorage.setItem('user', JSON.stringify(response.data))
-    return response.data
-  }
-
-  // ==================== SALON SERVICE (Eureka: SALON-SERVICE) ====================
+  // ==================== SALON APIs ====================
 
   async getSalons(page = 1, limit = 10, search?: string) {
     const params = new URLSearchParams({
@@ -143,11 +96,14 @@ class APIClient {
       limit: limit.toString(),
       ...(search && { search }),
     })
-    return (await this.client.get(`/salons/api/salons?${params}`)).data
+
+    const response = await this.client.get(`/salons/api/salons?${params}`)
+    return this.transformSalons(response.data)
   }
 
   async getSalonById(id: string) {
-    return (await this.client.get(`/salons/api/salons/${id}`)).data
+    const response = await this.client.get(`/salons/api/salons/${id}`)
+    return this.transformSalon(response.data)
   }
 
   async searchSalons(query: string, city?: string) {
@@ -155,176 +111,79 @@ class APIClient {
       search: query,
       ...(city && { city }),
     })
-    return (await this.client.get(`/salons/api/salons/search?${params}`)).data
+
+    const response = await this.client.get(`/salons/api/salons/search?${params}`)
+    return this.transformSalons(response.data)
   }
 
-  async createSalon(data: any) {
-    return (await this.client.post('/salons/api/salons', data)).data
+  // ==================== USER APIs ====================
+
+ async getCurrentUser() {
+  const response = await this.client.get('/users/api/users/current')  // Changed from /me
+  return response.data
+}
+
+  async getUserById(id: string) {
+    const response = await this.client.get(`/users/api/users/${id}`)
+    return response.data
   }
 
-  async updateSalon(id: string, data: any) {
-    return (await this.client.put(`/salons/api/salons/${id}`, data)).data
+  async updateUser(id: string, userData: any) {
+    const response = await this.client.put(`/users/api/users/${id}`, userData)
+    return response.data
   }
 
-  async deleteSalon(id: string) {
-    return (await this.client.delete(`/salons/api/salons/${id}`)).data
+  async deleteUser(id: string) {
+    const response = await this.client.delete(`/users/api/users/${id}`)
+    return response.data
   }
 
-  // ==================== SERVICE OFFERING (Eureka: SERVICE-OFFERING) ====================
+  // ==================== BOOKING APIs ====================
 
-  async getServicesBySalonId(salonId: string, page = 1, limit = 20) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    })
-    return (await this.client.get(`/services/api/salons/${salonId}/services?${params}`)).data
-  }
-
-  async getServiceById(id: string) {
-    return (await this.client.get(`/services/api/services/${id}`)).data
-  }
-
-  async getServicesByCategory(categoryId: string) {
-    return (await this.client.get(`/services/api/services/category/${categoryId}`)).data
-  }
-
-  async createService(data: any) {
-    return (await this.client.post('/services/api/services', data)).data
-  }
-
-  async updateService(id: string, data: any) {
-    return (await this.client.put(`/services/api/services/${id}`, data)).data
-  }
-
-  async deleteService(id: string) {
-    return (await this.client.delete(`/services/api/services/${id}`)).data
-  }
-
-  // ==================== CATEGORY SERVICE (Eureka: CATEGORY-SERVICE) ====================
-
-  async getCategories() {
-    return (await this.client.get('/categories/api/categories')).data
-  }
-
-  async getCategoryById(id: string) {
-    return (await this.client.get(`/categories/api/categories/${id}`)).data
-  }
-
-  async createCategory(data: any) {
-    return (await this.client.post('/categories/api/categories', data)).data
-  }
-
-  async updateCategory(id: string, data: any) {
-    return (await this.client.put(`/categories/api/categories/${id}`, data)).data
-  }
-
-  async deleteCategory(id: string) {
-    return (await this.client.delete(`/categories/api/categories/${id}`)).data
-  }
-
-  // ==================== BOOKING SERVICE (Eureka: BOOKING-SERVICE) ====================
-
-  async createBooking(data: {
-    userId: string
-    salonId: string
-    serviceId: string
-    bookingDate: string
-    bookingTime: string
-    notes?: string
-  }) {
-    return (await this.client.post('/bookings/api/bookings', data)).data
+  async getBookings(userId?: string) {
+    const url = userId 
+      ? `/bookings/api/bookings?userId=${userId}`
+      : '/bookings/api/bookings'
+    
+    const response = await this.client.get(url)
+    return response.data
   }
 
   async getBookingById(id: string) {
-    return (await this.client.get(`/bookings/api/bookings/${id}`)).data
+    const response = await this.client.get(`/bookings/api/bookings/${id}`)
+    return response.data
   }
 
-  async getUserBookings(userId: string, page = 1, limit = 10) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    })
-    return (await this.client.get(`/bookings/api/users/${userId}/bookings?${params}`)).data
+  async createBooking(bookingData: any) {
+    const response = await this.client.post('/bookings/api/bookings', bookingData)
+    return response.data
   }
 
-  async getSalonBookings(salonId: string, page = 1, limit = 10) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    })
-    return (await this.client.get(`/bookings/api/salons/${salonId}/bookings?${params}`)).data
-  }
-
-  async updateBooking(id: string, data: any) {
-    return (await this.client.put(`/bookings/api/bookings/${id}`, data)).data
+  async updateBooking(id: string, bookingData: any) {
+    const response = await this.client.put(`/bookings/api/bookings/${id}`, bookingData)
+    return response.data
   }
 
   async cancelBooking(id: string) {
-    return (await this.client.post(`/bookings/api/bookings/${id}/cancel`, {})).data
+    const response = await this.client.delete(`/bookings/api/bookings/${id}`)
+    return response.data
   }
 
-  async getAvailability(salonId: string, date: string) {
-    return (await this.client.get(`/bookings/api/salons/${salonId}/availability?date=${date}`)).data
+  // ==================== SALON OWNER APIs ====================
+
+  async createSalon(salonData: any) {
+    const response = await this.client.post('/salons/api/salons', salonData)
+    return response.data
   }
 
-  // ==================== PAYMENT SERVICE (Eureka: PAYMENT-SERVICE) ====================
-
-  async createPayment(data: {
-    bookingId: string
-    amount: number
-    paymentMethod: string
-  }) {
-    return (await this.client.post('/payments/api/payments', data)).data
+  async updateSalon(id: string, salonData: any) {
+    const response = await this.client.put(`/salons/api/salons/${id}`, salonData)
+    return response.data
   }
 
-  async getPaymentById(id: string) {
-    return (await this.client.get(`/payments/api/payments/${id}`)).data
-  }
-
-  async processPayment(
-    id: string,
-    details: {
-      cardNumber?: string
-      expiryDate?: string
-      cvv?: string
-      upiId?: string
-    }
-  ) {
-    return (await this.client.post(`/payments/api/payments/${id}/process`, details)).data
-  }
-
-  async confirmPayment(id: string) {
-    return (await this.client.post(`/payments/api/payments/${id}/confirm`, {})).data
-  }
-
-  async getPaymentHistory(userId: string, page = 1, limit = 10) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    })
-    return (await this.client.get(`/payments/api/users/${userId}/payments?${params}`)).data
-  }
-
-  async refundPayment(id: string, reason: string) {
-    return (await this.client.post(`/payments/api/payments/${id}/refund`, { reason })).data
-  }
-
-  // ==================== NOTIFICATION SERVICE (Eureka: NOTIFICATION-SERVICE) ====================
-
-  async getNotifications(userId: string, page = 1, limit = 20) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    })
-    return (await this.client.get(`/notifications/api/users/${userId}/notifications?${params}`)).data
-  }
-
-  async markNotificationAsRead(id: string) {
-    return (await this.client.put(`/notifications/api/notifications/${id}/read`, {})).data
-  }
-
-  async sendEmailNotification(email: string, subject: string, message: string) {
-    return (await this.client.post('/notifications/api/notifications/email', { email, subject, message })).data
+  async deleteSalon(id: string) {
+    const response = await this.client.delete(`/salons/api/salons/${id}`)
+    return response.data
   }
 }
 

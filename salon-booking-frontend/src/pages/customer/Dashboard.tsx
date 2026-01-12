@@ -20,7 +20,7 @@ export default function CustomerDashboard() {
   const fetchBookings = async () => {
     try {
       setLoading(true)
-      const bookingsData = await apiClient.getMyBookings()
+      const bookingsData = await apiClient.getUserBookings()
       setBookings(bookingsData)
 
       // Fetch salon info for each booking

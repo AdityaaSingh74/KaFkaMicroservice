@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import MainLayout from './components/layout/MainLayout'
 import AuthLayout from './components/layout/AuthLayout'
@@ -26,14 +26,13 @@ function App() {
           <Route path="/salons/:id" element={<SalonDetailsPage />} />
         </Route>
 
-        {/* Auth Routes - Disabled for Testing */}
-        {/* Redirect login and register to home since auth is bypassed */}
+        {/* Auth Routes */}
         <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/register" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        {/* Customer Routes - Now Accessible with Mock User */}
+        {/* Customer Routes */}
         <Route
           path="/customer/dashboard"
           element={
@@ -51,7 +50,7 @@ function App() {
           }
         />
 
-        {/* Salon Owner Routes - Now Accessible with Mock User */}
+        {/* Salon Owner Routes */}
         <Route
           path="/salon/dashboard"
           element={
@@ -61,7 +60,7 @@ function App() {
           }
         />
 
-        {/* Admin Routes - Now Accessible with Mock User */}
+        {/* Admin Routes */}
         <Route
           path="/admin/dashboard"
           element={

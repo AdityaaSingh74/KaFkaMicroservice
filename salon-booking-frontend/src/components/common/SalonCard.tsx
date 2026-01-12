@@ -7,7 +7,7 @@ interface SalonCardProps {
 }
 
 export default function SalonCard({ salon }: SalonCardProps) {
-
+  // ✅ Safely get ID
   const salonId = salon.id || salon._id || ''
   
   // ✅ Get image with multiple fallbacks
@@ -45,27 +45,26 @@ export default function SalonCard({ salon }: SalonCardProps) {
 
       {/* Content */}
       <div className="p-5 flex-1 flex flex-col">
-        {/* Name */}
         <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">{salon.name}</h3>
-
-        {/* Address */}
         <p className="text-sm text-slate-600 mb-4 line-clamp-2 flex-shrink-0">{salon.address}</p>
 
-        {/* Rating and City */}
         <div className="flex justify-between items-center mb-5 mt-auto">
           <div className="flex items-center gap-1">
             <span className="text-yellow-500 text-lg">★</span>
-            <span className="font-semibold text-slate-900">{salon.rating && salon.rating > 0 ? salon.rating.toFixed(1) : 'New'}</span>
+            <span className="font-semibold text-slate-900">
+              {salon.rating && salon.rating > 0 ? salon.rating.toFixed(1) : 'New'}
+            </span>
             <span className="text-xs text-slate-500">(4.2k)</span>
           </div>
-          <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
-            {salon.city}
-          </span>
+          {salon.city && (
+            <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
+              {salon.city}
+            </span>
+          )}
         </div>
 
-        {/* CTA Button */}
         <Link
-          to={`/salons/${salon.id}`}
+          to={`/salons/${salonId}`}
           className="w-full bg-slate-700 text-white py-2.5 rounded-md text-center font-medium hover:bg-slate-800 transition-colors duration-200"
         >
           View Details

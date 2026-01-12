@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { DummySalonService } from '../services/dummySalonService'
-import type { Salon } from '../services/dummySalonService'
+import apiClient from '../services/apiClient'
+import type { Salon } from '../types'  // ✅ Changed import
 import SalonCard from '../components/common/SalonCard'
 import LoadingSpinner from '../components/common/LoadingSpinner'
-import { apiClient } from '../services/apiClient'
 
 export default function SalonsPage() {
   const [salons, setSalons] = useState<Salon[]>([])
@@ -20,9 +19,9 @@ export default function SalonsPage() {
     if (search.trim()) {
       const filtered = salons.filter(
         (salon) =>
-          salon.name.toLowerCase().includes(search.toLowerCase()) ||
-          salon.city.toLowerCase().includes(search.toLowerCase()) ||
-          salon.address.toLowerCase().includes(search.toLowerCase())
+          salon.name?.toLowerCase().includes(search.toLowerCase()) ||
+          salon.city?.toLowerCase().includes(search.toLowerCase()) ||
+          salon.address?.toLowerCase().includes(search.toLowerCase())
       )
       setFilteredSalons(filtered)
     } else {
@@ -34,9 +33,12 @@ export default function SalonsPage() {
     try {
       setLoading(true)
       setError(null)
-      // Using dummy service for now - replace with apiClient.getSalons() when backend is ready
-      const data = await apiClient.getSalons(1, 10)
-      setSalons(data.salons)
+      const response = await apiClient.getSalons(1, 10)
+      
+      // ✅ Response IS the array already (not {data: []})
+      const salonData = Array.isArray(response) ? response : []
+      setSalons(salonData)
+      setFilteredSalons(salonData)
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Failed to fetch salons'
       console.error('Failed to fetch salons:', error)
@@ -53,7 +55,9 @@ export default function SalonsPage() {
       {/* Header Section */}
       <div className="mb-8 md:mb-10">
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Explore Salons</h1>
-        <p className="text-slate-600 text-lg">Find and book from {salons?.length || 0} verified salons</p>
+        <p className="text-slate-600 text-lg">
+          Find and book from {salons?.length || 0} verified salons
+        </p>
       </div>
 
       {/* Error Message */}

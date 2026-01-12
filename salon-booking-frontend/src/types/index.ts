@@ -22,6 +22,7 @@ export interface RegisterRequest {
 
 export interface Salon {
   id: string
+  _id?: string 
   name: string
   address: string
   city: string
@@ -29,8 +30,13 @@ export interface Salon {
   email: string
   rating: number
   image: string
+  images?: string[]
+  phoneNumber?: string
+  ownerId?: string
   description: string
   createdAt: string
+  openTime?: string
+  closeTime?: string
 }
 
 export interface Service {
